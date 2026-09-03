@@ -26,8 +26,8 @@ public class Partida {
     }
 
     public void iniciar() {
-        System.out.println("==================================================");
-        System.out.println("    TORNEO DE TRUCO ARGENTINO - PARTIDA A 15 PTS  ");
+        System.out.println("\n==================================================");
+        System.out.println("    INICIO DE PARTIDA A " + puntajeLimite + " PUNTOS");
         System.out.println("==================================================");
 
         sorteoInicialRey();
@@ -94,7 +94,7 @@ public class Partida {
             bot.recibirCarta(mazo.robar());
         }
 
-        // 1. Fase de Envido (solo en primera ronda antes de jugar cartas de truco)
+        // 1. Fase de Envido
         gestionarFaseEnvido();
         if (hayGanador()) return;
 
@@ -111,7 +111,6 @@ public class Partida {
 
         boolean seCanto = false;
 
-        // Turno del mano para abrir el envido
         if (manoTurno == 1) {
             System.out.print("¿Querés cantar Envido? (1: Envido, 2: Real Envido, 3: Falta Envido, 0: Paso): ");
             int c = leerOpcion(0, 3);
@@ -155,7 +154,7 @@ public class Partida {
             System.out.println("Bot responde: ¡NO QUIERO!");
             puntosHumano += ptsNoQuiero;
         } else {
-            System.out.println("Bot responde: ¡QUIERO Y RETRUCO EL ENVIDO (REAL ENVIDO)!");
+            System.out.println("Bot responde: ¡QUIERO Y REAL ENVIDO!");
             System.out.print("¿Aceptás? (1: Quiero, 2: No Quiero): ");
             int r = leerOpcion(1, 2);
             if (r == 1) {
@@ -213,7 +212,6 @@ public class Partida {
         for (int ronda = 1; ronda <= 3; ronda++) {
             System.out.println("\n-- RONDA " + ronda + " --");
 
-            // Comprobación de cantos antes de tirar
             if (quienCantoTruco != 1 && nivelTruco < 4) {
                 System.out.print("¿Deseás cantar " + siguienteCanto(nivelTruco) + "? (1: Sí, 0: No): ");
                 if (leerOpcion(0, 1) == 1) {
@@ -345,13 +343,17 @@ public class Partida {
 
     private void mostrarTanteador() {
         System.out.println("\n==================================================");
-        System.out.println("TANTEADOR (A 15 PUNTOS):");
+        System.out.println("TANTEADOR (A " + puntajeLimite + " PUNTOS):");
         System.out.println("  " + humano.getNombre() + ": " + formatearPuntos(puntosHumano));
         System.out.println("  " + bot.getNombre() + ": " + formatearPuntos(puntosBot));
         System.out.println("==================================================");
     }
 
     private String formatearPuntos(int pts) {
+        if (puntajeLimite == 15) {
+            return pts + " pts";
+        }
+        // Partida a 30 puntos
         if (pts <= 15) return pts + " (Malas)";
         return (pts - 15) + " (Buenas) [Total: " + pts + "]";
     }
