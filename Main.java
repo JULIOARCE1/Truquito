@@ -7,31 +7,49 @@ public class Main {
         System.out.println("========================================");
         System.out.println("       TRUCO ARGENTINO DE CONSOLA       ");
         System.out.println("========================================");
-        System.out.println("Seleccioná la modalidad de la partida:");
-        System.out.println("  [1] Partida a 15 puntos");
-        System.out.println("  [2] Partida a 30 puntos");
+        System.out.println("Selecciona la modalidad de jugadores:");
+        System.out.println("  [1] Mano a mano (1 vs 1)");
+        System.out.println("  [2] En parejas (2 vs 2)");
 
-        int puntajeLimite = 30;
+        int modalidad = 1;
         while (true) {
-            System.out.print("Elegí una opción (1 o 2): ");
+            System.out.print("Elige modalidad (1 o 2): ");
             if (scanner.hasNextInt()) {
-                int op = scanner.nextInt();
+                modalidad = scanner.nextInt();
                 scanner.nextLine();
-                if (op == 1) {
-                    puntajeLimite = 15;
-                    break;
-                } else if (op == 2) {
-                    puntajeLimite = 30;
-                    break;
-                }
+                if (modalidad == 1 || modalidad == 2) break;
             } else {
                 scanner.nextLine();
             }
-            System.out.println("Opción inválida.");
+            System.out.println("Opcion invalida.");
         }
 
-        Partida partida = new Partida(puntajeLimite, scanner);
-        partida.iniciar();
+        System.out.println("\nSelecciona el puntaje limite:");
+        System.out.println("  [1] 15 puntos");
+        System.out.println("  [2] 30 puntos");
+
+        int puntos = 30;
+        while (true) {
+            System.out.print("Elige puntaje (1 o 2): ");
+            if (scanner.hasNextInt()) {
+                int op = scanner.nextInt();
+                scanner.nextLine();
+                if (op == 1) { puntos = 15; break; }
+                if (op == 2) { puntos = 30; break; }
+            } else {
+                scanner.nextLine();
+            }
+            System.out.println("Opcion invalida.");
+        }
+
+        if (modalidad == 1) {
+            Partida partida = new Partida(puntos, scanner);
+            partida.iniciar();
+        } else {
+            PartidaParejas partidaP = new PartidaParejas(puntos, scanner);
+            partidaP.iniciar();
+        }
+
         scanner.close();
     }
 }
