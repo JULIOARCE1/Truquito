@@ -8,7 +8,7 @@ public class PartidaParejas {
     private int puntosEquipo1; // Humano (0) + Bot Compañero (2)
     private int puntosEquipo2; // Bot Rival 1 (1) + Bot Rival 2 (3)
     private final int puntajeLimite;
-    private int manoTurno; // 0, 1, 2, 3
+    private int manoTurno;
     private final Scanner scanner;
 
     private int nivelTruco;
@@ -35,7 +35,7 @@ public class PartidaParejas {
         System.out.println("  MODALIDAD 2 VS 2 - PARTIDA A " + puntajeLimite + " PUNTOS");
         System.out.println("  Equipo 1: Tú y Tu Compañero");
         System.out.println("  Equipo 2: Rival Este y Rival Oeste");
-        System.out.println("  Regla especial: Solo los últimos 2 cantan el Envido");
+        System.out.println("  Regla: Irse al mazo otorga 2 pts si no tiraste, o 1 pt si ya jugaste");
         System.out.println("==================================================");
 
         sorteoInicialRey();
@@ -157,6 +157,7 @@ public class PartidaParejas {
         int victEq1 = 0, victEq2 = 0;
         int turnoLanzador = manoTurno;
         boolean envidoJugado = huboFlor;
+        boolean usuarioTiroCarta = false;
 
         for (int ronda = 1; ronda <= 3; ronda++) {
             System.out.println("\n-- RONDA " + ronda + " --");
@@ -186,6 +187,18 @@ public class PartidaParejas {
                 }
 
                 Carta c = jugadores[actual].jugarCarta();
+
+                // Detección de irse al mazo por parte del usuario
+                if (c == null) {
+                    int pts = (nivelTruco > 1) ? nivelTruco : (usuarioTiroCarta ? 1 : 2);
+                    System.out.println("\nTu equipo se va al mazo.");
+                    System.out.println("-> El equipo rival gana la mano (+" + pts + " pts" + (pts == 2 ? " por irse sin tirar cartas" : "") + ").");
+                    puntosEquipo2 += pts;
+                    return;
+                }
+
+                if (actual == 0) usuarioTiroCarta = true;
+
                 System.out.println("  " + jugadores[actual].getNombre() + " tira: " + c);
 
                 if (mejorCartaRonda == null) {

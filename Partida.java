@@ -37,7 +37,7 @@ public class Partida {
             mostrarTanteador();
 
             if (!hayGanador()) {
-                System.out.print("\nPresiona ENTER para la siguiente mano (o 's' para salir): ");
+                System.out.print("\nPresioná ENTER para la siguiente mano (o 's' para salir): ");
                 String r = scanner.nextLine().trim().toLowerCase();
                 if (r.equals("s") || r.equals("salir")) {
                     System.out.println("\nPartida cancelada.");
@@ -48,9 +48,9 @@ public class Partida {
 
         System.out.println("\n==================================================");
         if (puntosHumano >= puntajeLimite) {
-            System.out.println("GANASTE LA PARTIDA!");
+            System.out.println("¡GANASTE LA PARTIDA!");
         } else {
-            System.out.println("EL BOT GANO LA PARTIDA.");
+            System.out.println("EL BOT GANÓ LA PARTIDA.");
         }
         System.out.println("==================================================");
     }
@@ -64,7 +64,7 @@ public class Partida {
             String tirador = (t == 1) ? humano.getNombre() : bot.getNombre();
             System.out.println("  " + tirador + " saca: " + c);
             if (c.getNumero() == 12) {
-                System.out.println("-> " + tirador + " es el dador!");
+                System.out.println("-> ¡" + tirador + " es el dador!");
                 this.manoTurno = (t == 1) ? 2 : 1;
                 System.out.println("-> Mano inicial: " + (manoTurno == 1 ? humano.getNombre() : bot.getNombre()));
                 break;
@@ -111,28 +111,28 @@ public class Partida {
         System.out.println("\n--- FASE DE TANTOS (FLOR / ENVIDO) ---");
         System.out.println("Tus cartas: " + humano.getMano());
         if (florH) {
-            System.out.println("TENES FLOR DE " + tantoFlorH + "!");
+            System.out.println("¡TENÉS FLOR DE " + tantoFlorH + "!");
         } else {
             System.out.println("Tanto de Envido: " + tantoEnvH);
         }
 
         if (manoTurno == 2) {
             if (florB) {
-                System.out.println("\nEl Bot canta: FLOR!");
+                System.out.println("\nEl Bot canta: ¡FLOR!");
                 resolverFlorIniciadaPorBot(florH, tantoFlorH, tantoFlorB);
                 return;
             } else if (tantoEnvB >= 26 && !florH) {
-                System.out.println("\nEl Bot canta: ENVIDO!");
+                System.out.println("\nEl Bot canta: ¡ENVIDO!");
                 resolverEnvidoIniciadoPorBot(1, tantoEnvH, tantoEnvB);
                 return;
             }
         }
 
         if (florH) {
-            System.out.print("Opciones: [4] Cantar FLOR!, [0] Paso: ");
+            System.out.print("Opciones: [4] Cantar ¡FLOR!, [0] Paso: ");
             int op = leerOpcion(0, 4);
             if (op == 4) {
-                System.out.println("Cantaste: FLOR!");
+                System.out.println("Cantaste: ¡FLOR!");
                 resolverFlorIniciadaPorHumano(florB, tantoFlorH, tantoFlorB);
                 return;
             }
@@ -141,7 +141,7 @@ public class Partida {
             int c = leerOpcion(0, 3);
             if (c > 0) {
                 if (florB) {
-                    System.out.println("Bot responde: FLOR ANULA EL ENVIDO!");
+                    System.out.println("Bot responde: ¡FLOR ANULA EL ENVIDO!");
                     puntosBot += 3;
                     return;
                 }
@@ -152,40 +152,40 @@ public class Partida {
 
         if (manoTurno == 1) {
             if (florB) {
-                System.out.println("\nEl Bot canta: FLOR!");
+                System.out.println("\nEl Bot canta: ¡FLOR!");
                 resolverFlorIniciadaPorBot(florH, tantoFlorH, tantoFlorB);
             } else if (tantoEnvB >= 26 && !florH) {
-                System.out.println("\nEl Bot canta: ENVIDO!");
+                System.out.println("\nEl Bot canta: ¡ENVIDO!");
                 resolverEnvidoIniciadoPorBot(1, tantoEnvH, tantoEnvB);
             } else {
-                System.out.println("Nadie canto tantos.");
+                System.out.println("Nadie cantó tantos.");
             }
         } else {
-            System.out.println("Nadie canto tantos.");
+            System.out.println("Nadie cantó tantos.");
         }
     }
 
     private void resolverFlorIniciadaPorHumano(boolean florB, int tantoH, int tantoB) {
         if (!florB) {
-            System.out.println("-> Sumas 3 puntos por tu Flor.");
+            System.out.println("-> Sumás 3 puntos por tu Flor.");
             puntosHumano += 3;
             return;
         }
 
-        System.out.println("El Bot tambien tiene flor!");
+        System.out.println("¡El Bot también tiene flor!");
         int decisionBot = bot.cantarFrenteAFlor(tantoB);
         if (decisionBot == 1) {
-            System.out.println("Bot responde: FLOR!");
+            System.out.println("Bot responde: ¡FLOR!");
             resolverFlores(tantoH, tantoB, 6);
         } else {
-            System.out.println("Bot responde: CONTRAFLOR AL RESTO!");
-            System.out.print("Que respondes? (1: Con flor quiero, 2: Con flor me achico): ");
+            System.out.println("Bot responde: ¡CONTRAFLOR AL RESTO!");
+            System.out.print("¿Qué respondés? (1: Con flor quiero, 2: Con flor me achico): ");
             int r = leerOpcion(1, 2);
             if (r == 1) {
-                System.out.println("CON FLOR QUIERO!");
+                System.out.println("¡CON FLOR QUIERO!");
                 resolverFlores(tantoH, tantoB, puntosAlResto() + 6);
             } else {
-                System.out.println("CON FLOR ME ACHICO!");
+                System.out.println("¡CON FLOR ME ACHICO!");
                 puntosBot += 4;
             }
         }
@@ -198,19 +198,19 @@ public class Partida {
             return;
         }
 
-        System.out.println("Vos tambien tenes flor!");
-        System.out.print("Que respondes? (1: Flor!, 2: Contraflor al resto!): ");
+        System.out.println("¡Vos también tenés flor!");
+        System.out.print("¿Qué respondés? (1: ¡Flor!, 2: ¡Contraflor al resto!): ");
         int r = leerOpcion(1, 2);
         if (r == 1) {
             resolverFlores(tantoH, tantoB, 6);
         } else {
-            System.out.println("Cantaste: CONTRAFLOR AL RESTO!");
+            System.out.println("Cantaste: ¡CONTRAFLOR AL RESTO!");
             int respBot = bot.responderContraflorAlResto(tantoB);
             if (respBot == 1) {
-                System.out.println("Bot responde: CON FLOR QUIERO!");
+                System.out.println("Bot responde: ¡CON FLOR QUIERO!");
                 resolverFlores(tantoH, tantoB, puntosAlResto() + 6);
             } else {
-                System.out.println("Bot responde: CON FLOR ME ACHICO!");
+                System.out.println("Bot responde: ¡CON FLOR ME ACHICO!");
                 puntosHumano += 4;
             }
         }
@@ -239,14 +239,14 @@ public class Partida {
 
         int respBot = bot.responderEnvido(tantoB, tipo);
         if (respBot == 1) {
-            System.out.println("Bot responde: QUIERO!");
+            System.out.println("Bot responde: ¡QUIERO!");
             definirGanadorEnvido(tantoH, tantoB, ptsQuiero);
         } else if (respBot == 2) {
-            System.out.println("Bot responde: NO QUIERO!");
+            System.out.println("Bot responde: ¡NO QUIERO!");
             puntosHumano += ptsNoQuiero;
         } else {
-            System.out.println("Bot responde: QUIERO Y REAL ENVIDO!");
-            System.out.print("Aceptas? (1: Quiero, 2: No Quiero): ");
+            System.out.println("Bot responde: ¡QUIERO Y REAL ENVIDO!");
+            System.out.print("¿Aceptás? (1: Quiero, 2: No Quiero): ");
             int r = leerOpcion(1, 2);
             if (r == 1) {
                 definirGanadorEnvido(tantoH, tantoB, ptsQuiero + 3);
@@ -260,27 +260,27 @@ public class Partida {
         int ptsQuiero = (tipo == 1) ? 2 : (tipo == 2 ? 3 : puntosAlResto());
         int ptsNoQuiero = 1;
 
-        System.out.print("Aceptas? (1: Quiero, 2: No Quiero, 3: Real Envido): ");
+        System.out.print("¿Aceptás? (1: Quiero, 2: No Quiero, 3: Real Envido): ");
         int r = leerOpcion(1, 3);
         if (r == 1) {
             definirGanadorEnvido(tantoH, tantoB, ptsQuiero);
         } else if (r == 2) {
             puntosBot += ptsNoQuiero;
         } else {
-            System.out.println("Cantaste: REAL ENVIDO!");
+            System.out.println("Cantaste: ¡REAL ENVIDO!");
             int respBot = bot.responderEnvido(tantoB, 2);
             if (respBot == 1) {
-                System.out.println("Bot responde: QUIERO!");
+                System.out.println("Bot responde: ¡QUIERO!");
                 definirGanadorEnvido(tantoH, tantoB, ptsQuiero + 3);
             } else {
-                System.out.println("Bot responde: NO QUIERO!");
+                System.out.println("Bot responde: ¡NO QUIERO!");
                 puntosHumano += ptsQuiero;
             }
         }
     }
 
     private void definirGanadorEnvido(int tH, int tB, int pts) {
-        System.out.println("\n>> Resolucion Envido: " + humano.getNombre() + " (" + tH + ") vs " + bot.getNombre() + " (" + tB + ")");
+        System.out.println("\n>> Resolución Envido: " + humano.getNombre() + " (" + tH + ") vs " + bot.getNombre() + " (" + tB + ")");
         if (tH > tB || (tH == tB && manoTurno == 1)) {
             System.out.println("-> " + humano.getNombre() + " gana el envido (+" + pts + " pts).");
             puntosHumano += pts;
@@ -294,12 +294,13 @@ public class Partida {
         int[] resultados = new int[3];
         int victH = 0, victB = 0;
         int turno = manoTurno;
+        boolean humanoTiroAlgunaCarta = false;
 
         for (int ronda = 1; ronda <= 3; ronda++) {
             System.out.println("\n-- RONDA " + ronda + " --");
 
             if (quienCantoTruco != 1 && nivelTruco < 4) {
-                System.out.print("Deseas cantar " + siguienteCanto(nivelTruco) + "? (1: Si, 0: No): ");
+                System.out.print("¿Deseás cantar " + siguienteCanto(nivelTruco) + "? (1: Sí, 0: No): ");
                 if (leerOpcion(0, 1) == 1) {
                     boolean sigue = procesarCantoTrucoHumano();
                     if (!sigue) return;
@@ -307,27 +308,39 @@ public class Partida {
             }
 
             if (quienCantoTruco != 2 && nivelTruco < 4 && bot.quiereCantarTruco(nivelTruco)) {
-                System.out.println("\nEl Bot canta " + siguienteCanto(nivelTruco) + "!");
+                System.out.println("\n¡El Bot canta " + siguienteCanto(nivelTruco) + "!");
                 boolean sigue = procesarRespuestaHumanoTruco();
                 if (!sigue) return;
             }
 
-            Carta cH, cB;
+            Carta cH = null, cB = null;
             if (turno == 1) {
                 cH = humano.jugarCarta();
+                if (cH == null) {
+                    irseAlMazo(humanoTiroAlgunaCarta, 2);
+                    return;
+                }
+                humanoTiroAlgunaCarta = true;
+
                 cB = bot.jugarCarta();
                 System.out.println(bot.getNombre() + " juega: " + cB);
             } else {
                 cB = bot.jugarCarta();
                 System.out.println(bot.getNombre() + " juega: " + cB);
+
                 cH = humano.jugarCarta();
+                if (cH == null) {
+                    irseAlMazo(humanoTiroAlgunaCarta, 2);
+                    return;
+                }
+                humanoTiroAlgunaCarta = true;
             }
 
             int res = ArbitroRonda.compararCartas(cH, cB);
             resultados[ronda - 1] = res;
 
             if (res == 1) {
-                System.out.println("-> Ganas la ronda.");
+                System.out.println("-> Ganás la ronda.");
                 victH++;
                 turno = 1;
             } else if (res == 2) {
@@ -354,25 +367,44 @@ public class Partida {
         }
     }
 
+    private void irseAlMazo(boolean yaTiroCarta, int ganadorIndex) {
+        int pts = 0;
+        if (nivelTruco > 1) {
+            pts = nivelTruco; // Si había Truco querido, se cobra el valor acordado
+        } else {
+            pts = yaTiroCarta ? 1 : 2; // Regla del mazo sin truco
+        }
+
+        if (ganadorIndex == 2) {
+            System.out.println("\nTe fuiste al mazo.");
+            System.out.println("-> El Bot gana la mano (+" + pts + " pts" + (pts == 2 ? " por irte sin tirar cartas" : "") + ").");
+            puntosBot += pts;
+        } else {
+            System.out.println("\nEl Bot se fue al mazo.");
+            System.out.println("-> Ganás la mano (+" + pts + " pts).");
+            puntosHumano += pts;
+        }
+    }
+
     private boolean procesarCantoTrucoHumano() {
         int proximoNivel = (nivelTruco == 1) ? 2 : nivelTruco + 1;
         quienCantoTruco = 1;
 
         int respBot = bot.responderTruco(proximoNivel);
         if (respBot == 1) {
-            System.out.println("Bot responde: QUIERO!");
+            System.out.println("Bot responde: ¡QUIERO!");
             puntosNoQueridoTruco = (proximoNivel == 2) ? 1 : proximoNivel - 1;
             nivelTruco = proximoNivel;
             return true;
         } else if (respBot == 2) {
-            System.out.println("Bot responde: NO QUIERO!");
+            System.out.println("Bot responde: ¡NO QUIERO!");
             puntosHumano += puntosNoQueridoTruco;
             return false;
         } else {
             int subeNivel = proximoNivel + 1;
-            System.out.println("Bot responde: QUIERO Y " + textoNivel(subeNivel) + "!");
+            System.out.println("Bot responde: ¡QUIERO Y " + textoNivel(subeNivel) + "!");
             quienCantoTruco = 2;
-            System.out.print("Aceptas? (1: Quiero, 2: No Quiero): ");
+            System.out.print("¿Aceptás? (1: Quiero, 2: No Quiero): ");
             if (leerOpcion(1, 2) == 1) {
                 puntosNoQueridoTruco = proximoNivel;
                 nivelTruco = subeNivel;
@@ -388,7 +420,7 @@ public class Partida {
         int proximoNivel = (nivelTruco == 1) ? 2 : nivelTruco + 1;
         quienCantoTruco = 2;
 
-        System.out.print("Que respondes? (1: Quiero, 2: No Quiero" + (proximoNivel < 4 ? ", 3: " + textoNivel(proximoNivel + 1) : "") + "): ");
+        System.out.print("¿Qué respondés? (1: Quiero, 2: No Quiero" + (proximoNivel < 4 ? ", 3: " + textoNivel(proximoNivel + 1) : "") + "): ");
         int r = leerOpcion(1, proximoNivel < 4 ? 3 : 2);
 
         if (r == 1) {
@@ -403,12 +435,12 @@ public class Partida {
             quienCantoTruco = 1;
             int respBot = bot.responderTruco(subeNivel);
             if (respBot == 1) {
-                System.out.println("Bot responde: QUIERO!");
+                System.out.println("Bot responde: ¡QUIERO!");
                 puntosNoQueridoTruco = proximoNivel;
                 nivelTruco = subeNivel;
                 return true;
             } else {
-                System.out.println("Bot responde: NO QUIERO!");
+                System.out.println("Bot responde: ¡NO QUIERO!");
                 puntosHumano += proximoNivel;
                 return false;
             }
@@ -450,7 +482,7 @@ public class Partida {
             } else {
                 scanner.nextLine();
             }
-            System.out.print("Opcion invalida (" + min + "-" + max + "): ");
+            System.out.print("Opción inválida (" + min + "-" + max + "): ");
         }
     }
 }

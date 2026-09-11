@@ -14,16 +14,21 @@ public class JugadorHumano extends Jugador {
         for (int i = 0; i < mano.size(); i++) {
             System.out.println("  [" + (i + 1) + "] " + mano.get(i));
         }
-        System.out.println("  [T] Tirar una carta tapada");
-        System.out.println("  [0] Rendirse / Salir del juego");
+        System.out.println("  [T] Tirar carta tapada");
+        System.out.println("  [M] Irse al mazo");
+        System.out.println("  [0] Salir del juego");
 
         while (true) {
             System.out.print("Elegí una opción: ");
             String entrada = scanner.nextLine().trim();
 
             if (entrada.equals("0")) {
-                System.out.println("\nPartida cancelada por el jugador.");
+                System.out.println("\nPartida cancelada por el usuario.");
                 System.exit(0);
+            }
+
+            if (entrada.equalsIgnoreCase("M")) {
+                return null; // Señal de irse al mazo
             }
 
             if (entrada.equalsIgnoreCase("T")) {
@@ -39,7 +44,7 @@ public class JugadorHumano extends Jugador {
                 } else {
                     scanner.nextLine();
                 }
-                System.out.println("Selección inválida.");
+                System.out.println("Opción inválida.");
                 continue;
             }
 
