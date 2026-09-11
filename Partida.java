@@ -121,7 +121,7 @@ public class Partida {
                 System.out.println("\nEl Bot canta: ¡FLOR!");
                 resolverFlorIniciadaPorBot(florH, tantoFlorH, tantoFlorB);
                 return;
-            } else if (tantoEnvB >= 26 && !florH) {
+            } else if (bot.quiereAbrirEnvido(tantoEnvB, true) && !florH) {
                 System.out.println("\nEl Bot canta: ¡ENVIDO!");
                 resolverEnvidoIniciadoPorBot(1, tantoEnvH, tantoEnvB);
                 return;
@@ -154,7 +154,7 @@ public class Partida {
             if (florB) {
                 System.out.println("\nEl Bot canta: ¡FLOR!");
                 resolverFlorIniciadaPorBot(florH, tantoFlorH, tantoFlorB);
-            } else if (tantoEnvB >= 26 && !florH) {
+            } else if (bot.quiereAbrirEnvido(tantoEnvB, false) && !florH) {
                 System.out.println("\nEl Bot canta: ¡ENVIDO!");
                 resolverEnvidoIniciadoPorBot(1, tantoEnvH, tantoEnvB);
             } else {
@@ -237,7 +237,7 @@ public class Partida {
         int ptsQuiero = (tipo == 1) ? 2 : (tipo == 2 ? 3 : puntosAlResto());
         int ptsNoQuiero = 1;
 
-        int respBot = bot.responderEnvido(tantoB, tipo);
+        int respBot = bot.responderEnvido(tantoB, tipo, manoTurno == 2);
         if (respBot == 1) {
             System.out.println("Bot responde: ¡QUIERO!");
             definirGanadorEnvido(tantoH, tantoB, ptsQuiero);
@@ -268,7 +268,7 @@ public class Partida {
             puntosBot += ptsNoQuiero;
         } else {
             System.out.println("Cantaste: ¡REAL ENVIDO!");
-            int respBot = bot.responderEnvido(tantoB, 2);
+            int respBot = bot.responderEnvido(tantoB, 2, manoTurno == 2);
             if (respBot == 1) {
                 System.out.println("Bot responde: ¡QUIERO!");
                 definirGanadorEnvido(tantoH, tantoB, ptsQuiero + 3);
@@ -322,10 +322,10 @@ public class Partida {
                 }
                 humanoTiroAlgunaCarta = true;
 
-                cB = bot.jugarCarta();
+                cB = bot.jugarCartaInteligente(cH, false);
                 System.out.println(bot.getNombre() + " juega: " + cB);
             } else {
-                cB = bot.jugarCarta();
+                cB = bot.jugarCartaInteligente(null, true);
                 System.out.println(bot.getNombre() + " juega: " + cB);
 
                 cH = humano.jugarCarta();
@@ -368,13 +368,7 @@ public class Partida {
     }
 
     private void irseAlMazo(boolean yaTiroCarta, int ganadorIndex) {
-        int pts = 0;
-        if (nivelTruco > 1) {
-            pts = nivelTruco; // Si había Truco querido, se cobra el valor acordado
-        } else {
-            pts = yaTiroCarta ? 1 : 2; // Regla del mazo sin truco
-        }
-
+        int pts = (nivelTruco > 1) ? nivelTruco : (yaTiroCarta ? 1 : 2);
         if (ganadorIndex == 2) {
             System.out.println("\nTe fuiste al mazo.");
             System.out.println("-> El Bot gana la mano (+" + pts + " pts" + (pts == 2 ? " por irte sin tirar cartas" : "") + ").");
