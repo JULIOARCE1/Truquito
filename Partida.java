@@ -7,7 +7,7 @@ public class Partida {
     private int puntosHumano;
     private int puntosBot;
     private final int puntajeLimite;
-    private int manoTurno;
+    private int manoTurno; // 1: Humano, 2: Bot
     private final Scanner scanner;
 
     private int nivelTruco;
@@ -33,6 +33,7 @@ public class Partida {
 
         while (!hayGanador()) {
             jugarMano();
+            // Alternancia estricta de mano para la siguiente ronda
             manoTurno = (manoTurno == 1) ? 2 : 1;
             mostrarTanteador();
 
@@ -64,9 +65,10 @@ public class Partida {
             String tirador = (t == 1) ? humano.getNombre() : bot.getNombre();
             System.out.println("  " + tirador + " saca: " + c);
             if (c.getNumero() == 12) {
-                System.out.println("-> ¡" + tirador + " es el dador!");
+                System.out.println("-> ¡" + tirador + " es el dador (reparte)!");
+                // Quien saca el rey reparte, por ende el OTRO es mano y tira primero
                 this.manoTurno = (t == 1) ? 2 : 1;
-                System.out.println("-> Mano inicial: " + (manoTurno == 1 ? humano.getNombre() : bot.getNombre()));
+                System.out.println("-> Mano inicial (tira primero): " + (manoTurno == 1 ? humano.getNombre() : bot.getNombre()));
                 break;
             }
             t = (t == 1) ? 2 : 1;
@@ -79,7 +81,7 @@ public class Partida {
 
     private void jugarMano() {
         System.out.println("\n--------------------------------------------------");
-        System.out.println("NUEVA MANO - Mano: " + (manoTurno == 1 ? humano.getNombre() : bot.getNombre()));
+        System.out.println("NUEVA MANO - Es mano: " + (manoTurno == 1 ? humano.getNombre() : bot.getNombre()));
 
         mazo.reiniciar();
         humano.limpiarMano();
@@ -116,18 +118,20 @@ public class Partida {
             System.out.println("Tanto de Envido: " + tantoEnvH);
         }
 
+        // Si el mano es el bot, canta primero
         if (manoTurno == 2) {
             if (florB) {
-                System.out.println("\nEl Bot canta: ¡FLOR!");
+                System.out.println("\nEl Bot es mano y canta: ¡FLOR!");
                 resolverFlorIniciadaPorBot(florH, tantoFlorH, tantoFlorB);
                 return;
             } else if (bot.quiereAbrirEnvido(tantoEnvB, true) && !florH) {
-                System.out.println("\nEl Bot canta: ¡ENVIDO!");
+                System.out.println("\nEl Bot es mano y canta: ¡ENVIDO!");
                 resolverEnvidoIniciadoPorBot(1, tantoEnvH, tantoEnvB);
                 return;
             }
         }
 
+        // Turno del humano para cantar si tiene flor o si quiere abrir envido
         if (florH) {
             System.out.print("Opciones: [4] Cantar ¡FLOR!, [0] Paso: ");
             int op = leerOpcion(0, 4);
@@ -150,12 +154,13 @@ public class Partida {
             }
         }
 
+        // Si el humano era mano y pasó, el bot tiene opción de cantar de pie
         if (manoTurno == 1) {
             if (florB) {
-                System.out.println("\nEl Bot canta: ¡FLOR!");
+                System.out.println("\nEl Bot canta de pie: ¡FLOR!");
                 resolverFlorIniciadaPorBot(florH, tantoFlorH, tantoFlorB);
             } else if (bot.quiereAbrirEnvido(tantoEnvB, false) && !florH) {
-                System.out.println("\nEl Bot canta: ¡ENVIDO!");
+                System.out.println("\nEl Bot canta de pie: ¡ENVIDO!");
                 resolverEnvidoIniciadoPorBot(1, tantoEnvH, tantoEnvB);
             } else {
                 System.out.println("Nadie cantó tantos.");
@@ -293,7 +298,7 @@ public class Partida {
     private void gestionarFaseTruco() {
         int[] resultados = new int[3];
         int victH = 0, victB = 0;
-        int turno = manoTurno;
+        int turnoLanzador = manoTurno; // Arranca tirando estrictamente quien sea mano
         boolean humanoTiroAlgunaCarta = false;
 
         for (int ronda = 1; ronda <= 3; ronda++) {
@@ -314,7 +319,9 @@ public class Partida {
             }
 
             Carta cH = null, cB = null;
-            if (turno == 1) {
+
+            // Si turnoLanzador == 1, tira primero el humano
+            if (turnoLanzador == 1) {
                 cH = humano.jugarCarta();
                 if (cH == null) {
                     irseAlMazo(humanoTiroAlgunaCarta, 2);
@@ -325,8 +332,9 @@ public class Partida {
                 cB = bot.jugarCartaInteligente(cH, false);
                 System.out.println(bot.getNombre() + " juega: " + cB);
             } else {
+                // Si turnoLanzador == 2, tira primero el bot
                 cB = bot.jugarCartaInteligente(null, true);
-                System.out.println(bot.getNombre() + " juega: " + cB);
+                System.out.println(bot.getNombre() + " tira primero: " + cB);
 
                 cH = humano.jugarCarta();
                 if (cH == null) {
@@ -342,13 +350,15 @@ public class Partida {
             if (res == 1) {
                 System.out.println("-> Ganás la ronda.");
                 victH++;
-                turno = 1;
+                turnoLanzador = 1; // Quien gana la ronda arranca la siguiente
             } else if (res == 2) {
                 System.out.println("-> El bot gana la ronda.");
                 victB++;
-                turno = 2;
+                turnoLanzador = 2; // Quien gana la ronda arranca la siguiente
             } else {
                 System.out.println("-> Parda.");
+                // En caso de parda, vuelve a iniciar el que fue mano al principio
+                turnoLanzador = manoTurno;
             }
 
             if (victH == 2 || victB == 2) break;
