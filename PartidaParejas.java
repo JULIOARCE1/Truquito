@@ -35,7 +35,7 @@ public class PartidaParejas {
         System.out.println("  MODALIDAD 2 VS 2 - PARTIDA A " + puntajeLimite + " PUNTOS");
         System.out.println("  Equipo 1: Tú y Tu Compañero");
         System.out.println("  Equipo 2: Rival Este y Rival Oeste");
-        System.out.println("  Regla: Irse al mazo otorga 2 pts si no tiraste, o 1 pt si ya jugaste");
+        System.out.println("  Regla: Compañero con iniciativa para cantar y responder");
         System.out.println("==================================================");
 
         sorteoInicialRey();
@@ -163,12 +163,12 @@ public class PartidaParejas {
             System.out.println("\n-- RONDA " + ronda + " --");
             System.out.println("Cartas restantes de tu compañero: " + jugadores[2].getMano());
 
+            // Opción del usuario de cantar truco
             if (equipoQueCantoTruco != 1 && nivelTruco < 4) {
                 System.out.print("¿Deseás cantar " + siguienteCanto(nivelTruco) + "? (1: Sí, 0: No): ");
                 if (leerOpcion(0, 1) == 1) {
-                    nivelTruco = (nivelTruco == 1) ? 2 : nivelTruco + 1;
-                    equipoQueCantoTruco = 1;
-                    System.out.println("Cantaste: " + textoNivel(nivelTruco) + "! Rivales responden: ¡QUIERO!");
+                    boolean sigue = procesarCantoTrucoEquipo1();
+                    if (!sigue) return;
                 }
             }
 
@@ -178,6 +178,7 @@ public class PartidaParejas {
             for (int k = 0; k < 4; k++) {
                 int actual = (turnoLanzador + k) % 4;
 
+                // Turno de envido restringido a los últimos dos en la ronda 1
                 if (ronda == 1 && !envidoJugado && k == 2) {
                     int jugador3 = actual;
                     int jugador4 = (turnoLanzador + 3) % 4;
@@ -186,18 +187,38 @@ public class PartidaParejas {
                     if (hayGanador()) return;
                 }
 
-                Carta c = jugadores[actual].jugarCarta();
-
-                // Detección de irse al mazo por parte del usuario
-                if (c == null) {
-                    int pts = (nivelTruco > 1) ? nivelTruco : (usuarioTiroCarta ? 1 : 2);
-                    System.out.println("\nTu equipo se va al mazo.");
-                    System.out.println("-> El equipo rival gana la mano (+" + pts + " pts" + (pts == 2 ? " por irse sin tirar cartas" : "") + ").");
-                    puntosEquipo2 += pts;
-                    return;
+                // Iniciativa de Truco de los bots antes de tirar
+                if (actual == 2 && equipoQueCantoTruco != 1 && nivelTruco < 4) {
+                    JugadorBot compa = (JugadorBot) jugadores[2];
+                    if (compa.quiereCantarTruco(nivelTruco)) {
+                        System.out.println("\n¡Tu Compañero toma la iniciativa y canta " + siguienteCanto(nivelTruco) + "!");
+                        boolean sigue = procesarCantoTrucoEquipo1();
+                        if (!sigue) return;
+                    }
+                } else if ((actual == 1 || actual == 3) && equipoQueCantoTruco != 2 && nivelTruco < 4) {
+                    JugadorBot rival = (JugadorBot) jugadores[actual];
+                    if (rival.quiereCantarTruco(nivelTruco)) {
+                        System.out.println("\n¡" + rival.getNombre() + " canta " + siguienteCanto(nivelTruco) + "!");
+                        boolean sigue = procesarRespuestaTrucoRivales(actual);
+                        if (!sigue) return;
+                    }
                 }
 
-                if (actual == 0) usuarioTiroCarta = true;
+                Carta c;
+                if (actual == 0) {
+                    c = jugadores[0].jugarCarta();
+                    if (c == null) {
+                        int pts = (nivelTruco > 1) ? nivelTruco : (usuarioTiroCarta ? 1 : 2);
+                        System.out.println("\nTu equipo se va al mazo.");
+                        System.out.println("-> El equipo rival gana la mano (+" + pts + " pts).");
+                        puntosEquipo2 += pts;
+                        return;
+                    }
+                    usuarioTiroCarta = true;
+                } else {
+                    JugadorBot botActual = (JugadorBot) jugadores[actual];
+                    c = botActual.jugarCartaInteligente(mejorCartaRonda, (k == 0));
+                }
 
                 System.out.println("  " + jugadores[actual].getNombre() + " tira: " + c);
 
@@ -246,29 +267,124 @@ public class PartidaParejas {
         }
     }
 
+    private boolean procesarCantoTrucoEquipo1() {
+        int proximoNivel = (nivelTruco == 1) ? 2 : nivelTruco + 1;
+        equipoQueCantoTruco = 1;
+        JugadorBot r1 = (JugadorBot) jugadores[1];
+
+        int resp = r1.responderTruco(proximoNivel);
+        if (resp == 1) {
+            System.out.println("Rivales responden: ¡QUIERO!");
+            puntosNoQueridoTruco = (proximoNivel == 2) ? 1 : proximoNivel - 1;
+            nivelTruco = proximoNivel;
+            return true;
+        } else if (resp == 2) {
+            System.out.println("Rivales responden: ¡NO QUIERO!");
+            puntosEquipo1 += puntosNoQueridoTruco;
+            return false;
+        } else {
+            int sube = proximoNivel + 1;
+            System.out.println("Rivales responden: ¡QUIERO Y " + textoNivel(sube) + "!");
+            equipoQueCantoTruco = 2;
+            System.out.print("¿Aceptan para su equipo? (1: Quiero, 2: No Quiero): ");
+            if (leerOpcion(1, 2) == 1) {
+                puntosNoQueridoTruco = proximoNivel;
+                nivelTruco = sube;
+                return true;
+            } else {
+                puntosEquipo2 += proximoNivel;
+                return false;
+            }
+        }
+    }
+
+    private boolean procesarRespuestaTrucoRivales(int quienCanto) {
+        int proximoNivel = (nivelTruco == 1) ? 2 : nivelTruco + 1;
+        equipoQueCantoTruco = 2;
+
+        // Si es el turno inmediato de tu compañero, él puede responder o darte la decisión
+        JugadorBot compa = (JugadorBot) jugadores[2];
+        int respCompa = compa.responderTruco(proximoNivel);
+
+        if (respCompa == 3 && proximoNivel < 4) {
+            System.out.println("Tu Compañero se adelanta y grita: ¡QUIERO Y " + textoNivel(proximoNivel + 1) + "!");
+            equipoQueCantoTruco = 1;
+            JugadorBot rival = (JugadorBot) jugadores[quienCanto];
+            if (rival.responderTruco(proximoNivel + 1) == 1) {
+                System.out.println("Rivales responden: ¡QUIERO!");
+                puntosNoQueridoTruco = proximoNivel;
+                nivelTruco = proximoNivel + 1;
+                return true;
+            } else {
+                System.out.println("Rivales responden: ¡NO QUIERO!");
+                puntosEquipo1 += proximoNivel;
+                return false;
+            }
+        }
+
+        System.out.print("¿Qué responden? (1: Quiero, 2: No Quiero" + (proximoNivel < 4 ? ", 3: " + textoNivel(proximoNivel + 1) : "") + "): ");
+        int r = leerOpcion(1, proximoNivel < 4 ? 3 : 2);
+
+        if (r == 1) {
+            puntosNoQueridoTruco = (proximoNivel == 2) ? 1 : proximoNivel - 1;
+            nivelTruco = proximoNivel;
+            return true;
+        } else if (r == 2) {
+            puntosEquipo2 += puntosNoQueridoTruco;
+            return false;
+        } else {
+            int sube = proximoNivel + 1;
+            equipoQueCantoTruco = 1;
+            JugadorBot rival = (JugadorBot) jugadores[quienCanto];
+            if (rival.responderTruco(sube) == 1) {
+                System.out.println("Rivales responden: ¡QUIERO!");
+                puntosNoQueridoTruco = proximoNivel;
+                nivelTruco = sube;
+                return true;
+            } else {
+                System.out.println("Rivales responden: ¡NO QUIERO!");
+                puntosEquipo1 += proximoNivel;
+                return false;
+            }
+        }
+    }
+
     private void resolverEnvidoUltimosDos(int penultimo, int ultimo) {
         System.out.println("\n--- TURNO DE ENVIDO (SOLO LOS ÚLTIMOS 2) ---");
         System.out.println("Habilitados para cantar: " + jugadores[penultimo].getNombre() + " y " + jugadores[ultimo].getNombre());
 
-        int e1 = Math.max(CalculadorEnvido.calcular(jugadores[0].getMano()), CalculadorEnvido.calcular(jugadores[2].getMano()));
+        int tantoCompa = CalculadorEnvido.calcular(jugadores[2].getMano());
+        int e1 = Math.max(CalculadorEnvido.calcular(jugadores[0].getMano()), tantoCompa);
         int e2 = Math.max(CalculadorEnvido.calcular(jugadores[1].getMano()), CalculadorEnvido.calcular(jugadores[3].getMano()));
 
         boolean canto = false;
 
+        // Si el penúltimo sos vos
         if (penultimo == 0) {
-            System.out.print("Sos el penúltimo en jugar. ¿Deseás cantar Envido? (1: Sí, 0: No): ");
+            System.out.print("Sos el penúltimo. ¿Deseás cantar Envido? (1: Sí, 0: No): ");
             if (leerOpcion(0, 1) == 1) {
                 canto = true;
                 evaluarRespuestaEnvido(e1, e2, true);
             }
+        } else if (penultimo == 2) {
+            // El penúltimo es tu compañero
+            JugadorBot compa = (JugadorBot) jugadores[2];
+            if (compa.quiereAbrirEnvido(tantoCompa, false)) {
+                System.out.println("¡Tu Compañero canta: ENVIDO!");
+                canto = true;
+                evaluarRespuestaEnvido(e1, e2, true);
+            }
         } else if (getEquipo(penultimo) == 2) {
-            if (e2 >= 27) {
-                System.out.println(jugadores[penultimo].getNombre() + " canta: ¡ENVIDO!");
+            JugadorBot rival = (JugadorBot) jugadores[penultimo];
+            int tantoRival = CalculadorEnvido.calcular(rival.getMano());
+            if (rival.quiereAbrirEnvido(tantoRival, false)) {
+                System.out.println(rival.getNombre() + " canta: ¡ENVIDO!");
                 canto = true;
                 evaluarRespuestaEnvido(e1, e2, false);
             }
         }
 
+        // Si el penúltimo pasó, decide el último (el pie)
         if (!canto) {
             if (ultimo == 0) {
                 System.out.print("Sos el pie (último). ¿Deseás cantar Envido? (1: Sí, 0: No): ");
@@ -277,18 +393,31 @@ public class PartidaParejas {
                 } else {
                     System.out.println("Los últimos dos pasaron sin cantar Envido.");
                 }
-            } else if (getEquipo(ultimo) == 2 && e2 >= 27) {
-                System.out.println(jugadores[ultimo].getNombre() + " canta: ¡ENVIDO!");
-                evaluarRespuestaEnvido(e1, e2, false);
-            } else {
-                System.out.println("Los últimos dos pasaron sin cantar Envido.");
+            } else if (ultimo == 2) {
+                JugadorBot compa = (JugadorBot) jugadores[2];
+                if (compa.quiereAbrirEnvido(tantoCompa, false)) {
+                    System.out.println("¡Tu Compañero (pie) canta: ENVIDO!");
+                    evaluarRespuestaEnvido(e1, e2, true);
+                } else {
+                    System.out.println("Los últimos dos pasaron sin cantar Envido.");
+                }
+            } else if (getEquipo(ultimo) == 2) {
+                JugadorBot rival = (JugadorBot) jugadores[ultimo];
+                int tantoRival = CalculadorEnvido.calcular(rival.getMano());
+                if (rival.quiereAbrirEnvido(tantoRival, false)) {
+                    System.out.println(rival.getNombre() + " (pie) canta: ¡ENVIDO!");
+                    evaluarRespuestaEnvido(e1, e2, false);
+                } else {
+                    System.out.println("Los últimos dos pasaron sin cantar Envido.");
+                }
             }
         }
     }
 
     private void evaluarRespuestaEnvido(int e1, int e2, boolean cantoEquipo1) {
         if (cantoEquipo1) {
-            if (e2 >= 26) {
+            JugadorBot rival = (JugadorBot) jugadores[1];
+            if (rival.responderEnvido(e2, 1, false) == 1) {
                 System.out.println("Equipo Rival responde: ¡QUIERO!");
                 definirGanadorEnvido(e1, e2);
             } else {
