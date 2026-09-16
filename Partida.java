@@ -7,9 +7,8 @@ public class Partida {
     private int puntosHumano;
     private int puntosBot;
     private final int puntajeLimite;
-    private int manoTurno; // 1: Humano, 2: Bot
+    private int manoTurno; //1: Humano, 2: Bot
     private final Scanner scanner;
-
     private int nivelTruco;
     private int puntosNoQueridoTruco;
     private int quienCantoTruco;
