@@ -8,8 +8,8 @@ public class Partida {
     private final int puntajeLimite;
     private final Scanner scanner;
 
-    private int nivelTruco;
-    private int puntosNoQueridoTruco;
+    private final GestorTruco gestorTruco;
+    private final GestorEnvido gestorEnvido;
     private Equipo equipoQueCantoTruco;
 
     public Partida(Mesa mesa, int puntajeLimite, Scanner scanner) {
@@ -17,6 +17,8 @@ public class Partida {
         this.puntajeLimite = puntajeLimite;
         this.scanner = scanner;
         this.mazo = new Mazo();
+        this.gestorTruco = new GestorTruco();
+        this.gestorEnvido = new GestorEnvido();
     }
 
     public void iniciar() {
@@ -90,8 +92,8 @@ public class Partida {
             }
         }
 
-        nivelTruco = 1;
-        puntosNoQueridoTruco = 1;
+        gestorTruco.reiniciar();
+        gestorEnvido.reiniciar();
         equipoQueCantoTruco = null;
 
         mostrarEstadoEquipoHumano();
@@ -201,9 +203,10 @@ public class Partida {
         int[] victorias = new int[3];
         int victEq1 = 0, victEq2 = 0;
         int turnoLanzador = mesa.getIndiceMano();
-        boolean envidoResuelto = huboFlor;
         boolean humanoTiroCarta = false;
         int totalJugadores = mesa.getTotalJugadores();
+
+        if (huboFlor) gestorEnvido.marcarResuelto();
 
         for (int ronda = 1; ronda <= 3; ronda++) {
             System.out.println("\n-- RONDA " + ronda + " --");
@@ -216,7 +219,7 @@ public class Partida {
                 Jugador jActual = mesa.getJugador(actual);
 
                 // --- 1. APERTURA DE ENVIDO EN RONDA 1 ---
-                if (ronda == 1 && !envidoResuelto) {
+                if (ronda == 1 && !gestorEnvido.isResuelto()) {
                     if (totalJugadores == 2 && k == 0) {
                         if (actual == 0) {
                             int miTanto = mesa.getEquipo1().getMejorTantoEnvido();
@@ -228,7 +231,7 @@ public class Partida {
                             int c = leerOpcion(0, 3);
                             if (c > 0) {
                                 resolverEnvidoIniciadoPorHumano(c, miTanto, mesa.getEquipo2().getMejorTantoEnvido());
-                                envidoResuelto = true;
+                                gestorEnvido.marcarResuelto();
                                 if (hayGanador()) return;
                             } else {
                                 System.out.println("Paso.");
@@ -240,7 +243,7 @@ public class Partida {
                             if (botRival.quiereAbrirEnvido(t2, true)) {
                                 System.out.println("\n" + botRival.getNombre() + " (mano) canta: ¡ENVIDO!");
                                 resolverEnvidoIniciadoPorRival(t1, t2);
-                                envidoResuelto = true;
+                                gestorEnvido.marcarResuelto();
                                 if (hayGanador()) return;
                             } else {
                                 System.out.println(botRival.getNombre() + " (mano): Paso.");
@@ -261,7 +264,7 @@ public class Partida {
                             } else {
                                 System.out.println("Paso.");
                             }
-                            envidoResuelto = true;
+                            gestorEnvido.marcarResuelto();
                         } else {
                             JugadorBot botRival = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
                             int t2 = mesa.getEquipo2().getMejorTantoEnvido();
@@ -271,32 +274,33 @@ public class Partida {
                                 resolverEnvidoIniciadoPorRival(t1, t2);
                                 if (hayGanador()) return;
                             }
-                            envidoResuelto = true;
+                            gestorEnvido.marcarResuelto();
                         }
                     } else if (totalJugadores == 4 && k == 2) {
                         gestionarEnvidoParejas(actual, (turnoLanzador + 3) % totalJugadores);
-                        envidoResuelto = true;
+                        gestorEnvido.marcarResuelto();
                         if (hayGanador()) return;
                     }
                 }
 
                 // --- 2. CANTO DE TRUCO (EN EL TURNO DE CADA UNO) ---
                 if (jActual instanceof JugadorHumano) {
-                    if (equipoQueCantoTruco != mesa.getEquipo1() && nivelTruco < 4) {
-                        System.out.println("¿Deseás cantar " + siguienteCanto(nivelTruco) + " antes de tirar?");
+                    if (gestorTruco.puedeCantar(mesa.getEquipo1())) {
+                        System.out.println("¿Deseás cantar " + gestorTruco.getProximoCanto() + " antes de tirar?");
                         System.out.println("  [1] Sí");
                         System.out.println("  [0] No");
                         if (leerOpcion(0, 1) == 1) {
-                            if (!procesarCantoTrucoHumano(ronda, envidoResuelto)) return;
-                            envidoResuelto = true;
+                            if (!procesarCantoTrucoHumano(ronda)) return;
+                            gestorEnvido.marcarResuelto();
                         }
                     }
                 } else if (jActual instanceof JugadorBot botActual) {
                     Equipo eqBot = mesa.getEquipoDe(botActual);
-                    if (equipoQueCantoTruco != eqBot && nivelTruco < 4 && botActual.quiereCantarTruco(nivelTruco)) {
-                        System.out.println("\n¡" + botActual.getNombre() + " canta " + siguienteCanto(nivelTruco) + "!");
-                        if (!procesarCantoTrucoBot(eqBot, ronda, envidoResuelto)) return;
-                        envidoResuelto = true;
+                    int nivelNum = gestorTruco.getNivelActual().getPuntosQuerido();
+                    if (gestorTruco.puedeCantar(eqBot) && botActual.quiereCantarTruco(nivelNum)) {
+                        System.out.println("\n¡" + botActual.getNombre() + " canta " + gestorTruco.getProximoCanto() + "!");
+                        if (!procesarCantoTrucoBot(eqBot, ronda)) return;
+                        gestorEnvido.marcarResuelto();
                     }
                 }
 
@@ -331,7 +335,7 @@ public class Partida {
                 }
             }
 
-            if (ronda == 1) envidoResuelto = true;
+            if (ronda == 1) gestorEnvido.marcarResuelto();
 
             if (ganadorDeRonda == -1) {
                 System.out.println("-> Baza parda.");
@@ -351,7 +355,7 @@ public class Partida {
 
         boolean manoEsEq1 = (mesa.getEquipoDe(mesa.getJugador(mesa.getIndiceMano())) == mesa.getEquipo1());
         int ganadorFinal = ArbitroRonda.definirGanadorMano(victorias, victEq1, victEq2, manoEsEq1 ? 1 : 2);
-        int pts = (nivelTruco == 1) ? 1 : nivelTruco;
+        int pts = gestorTruco.getPuntosEnJuego();
 
         if (ganadorFinal == 1) {
             System.out.println("\n>>> Ganó la mano " + mesa.getEquipo1().getNombre() + " (+" + pts + " pts).");
@@ -363,7 +367,7 @@ public class Partida {
     }
 
     private void irseAlMazo(boolean tiroCarta, Equipo ganador) {
-        int pts = (nivelTruco > 1) ? nivelTruco : (tiroCarta ? 1 : 2);
+        int pts = gestorTruco.estaActivo() ? gestorTruco.getPuntosEnJuego() : (tiroCarta ? 1 : 2);
         System.out.println("\nTe fuiste al mazo.");
         System.out.println("-> " + ganador.getNombre() + " gana la mano (+" + pts + " pts).");
         ganador.sumarPuntos(pts);
@@ -416,68 +420,73 @@ public class Partida {
     }
 
     private void evaluarEnvidoParejas(int t1, int t2, boolean cantoEq1) {
+        gestorEnvido.registrarCanto(1);
         if (cantoEq1) {
             JugadorBot r = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
             if (r.responderEnvido(t2, 1, false) == 1) {
                 System.out.println("Rivales responden: ¡QUIERO!");
-                definirGanadorEnvido(t1, t2, 2);
+                definirGanadorEnvido(t1, t2, gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite));
             } else {
                 System.out.println("Rivales responden: ¡NO QUIERO!");
-                mesa.getEquipo1().sumarPuntos(1);
+                mesa.getEquipo1().sumarPuntos(gestorEnvido.getPuntosNoQuiero());
             }
         } else {
             System.out.println("El rival cantó Envido (tu equipo tiene " + t1 + " de envido). ¿Aceptás para tu equipo?");
             System.out.println("  [1] Quiero");
             System.out.println("  [0] No Quiero");
             if (leerOpcion(0, 1) == 1) {
-                definirGanadorEnvido(t1, t2, 2);
+                definirGanadorEnvido(t1, t2, gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite));
             } else {
-                mesa.getEquipo2().sumarPuntos(1);
+                mesa.getEquipo2().sumarPuntos(gestorEnvido.getPuntosNoQuiero());
             }
         }
     }
 
     private void resolverEnvidoIniciadoPorHumano(int tipo, int t1, int t2) {
-        int pts = (tipo == 1) ? 2 : (tipo == 2 ? 3 : puntosAlResto());
+        gestorEnvido.registrarCanto(tipo);
         JugadorBot rival = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
         int resp = rival.responderEnvido(t2, tipo, mesa.getIndiceMano() != 0);
 
-        boolean quiereTrucoBot = (nivelTruco == 1 && rival.quiereCantarTruco(1));
+        boolean quiereTrucoBot = (!gestorTruco.estaActivo() && rival.quiereCantarTruco(1));
 
         if (resp == 1) {
+            int pts = gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite);
             if (quiereTrucoBot) {
                 System.out.println("Rival responde: ¡QUIERO Y TRUCO!");
                 definirGanadorEnvido(t1, t2, pts);
                 if (hayGanador()) return;
-                procesarCantoTrucoBot(mesa.getEquipo2(), 1, true);
+                procesarCantoTrucoBot(mesa.getEquipo2(), 1);
             } else {
                 System.out.println("Rival responde: ¡QUIERO!");
                 definirGanadorEnvido(t1, t2, pts);
             }
         } else if (resp == 2) {
+            int ptsNo = gestorEnvido.getPuntosNoQuiero();
             if (quiereTrucoBot) {
                 System.out.println("Rival responde: ¡NO QUIERO Y TRUCO!");
-                mesa.getEquipo1().sumarPuntos(1);
+                mesa.getEquipo1().sumarPuntos(ptsNo);
                 if (hayGanador()) return;
-                procesarCantoTrucoBot(mesa.getEquipo2(), 1, true);
+                procesarCantoTrucoBot(mesa.getEquipo2(), 1);
             } else {
                 System.out.println("Rival responde: ¡NO QUIERO!");
-                mesa.getEquipo1().sumarPuntos(1);
+                mesa.getEquipo1().sumarPuntos(ptsNo);
             }
         } else {
             System.out.println("Rival responde: ¡QUIERO Y REAL ENVIDO!");
+            gestorEnvido.registrarCanto(2);
             System.out.println("¿Aceptás? (Tenés " + t1 + " de envido)");
             System.out.println("  [1] Quiero");
             System.out.println("  [2] No Quiero");
             if (leerOpcion(1, 2) == 1) {
-                definirGanadorEnvido(t1, t2, pts + 3);
+                definirGanadorEnvido(t1, t2, gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite));
             } else {
-                mesa.getEquipo2().sumarPuntos(pts);
+                mesa.getEquipo2().sumarPuntos(gestorEnvido.getPuntosNoQuiero());
             }
         }
     }
 
     private void resolverEnvidoIniciadoPorRival(int t1, int t2) {
+        gestorEnvido.registrarCanto(1);
         System.out.println("¿Aceptás? (Tenés " + t1 + " de envido)");
         System.out.println("  [1] Quiero");
         System.out.println("  [2] No Quiero");
@@ -487,31 +496,32 @@ public class Partida {
         int r = leerOpcion(1, 5);
 
         if (r == 1) {
-            definirGanadorEnvido(t1, t2, 2);
+            definirGanadorEnvido(t1, t2, gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite));
         } else if (r == 2) {
-            mesa.getEquipo2().sumarPuntos(1);
+            mesa.getEquipo2().sumarPuntos(gestorEnvido.getPuntosNoQuiero());
         } else if (r == 3) {
             System.out.println("Cantaste: ¡REAL ENVIDO!");
+            gestorEnvido.registrarCanto(2);
             JugadorBot rival = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
             if (rival.responderEnvido(t2, 2, false) == 1) {
                 System.out.println("Rival responde: ¡QUIERO!");
-                definirGanadorEnvido(t1, t2, 5);
+                definirGanadorEnvido(t1, t2, gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite));
             } else {
                 System.out.println("Rival responde: ¡NO QUIERO!");
-                mesa.getEquipo1().sumarPuntos(2);
+                mesa.getEquipo1().sumarPuntos(gestorEnvido.getPuntosNoQuiero());
             }
         } else if (r == 4) {
             System.out.println("Cantaste: ¡QUIERO Y TRUCO!");
-            definirGanadorEnvido(t1, t2, 2);
+            definirGanadorEnvido(t1, t2, gestorEnvido.calcularPuntosQueridos(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos(), puntajeLimite));
             if (hayGanador()) return;
             System.out.println("\nAhora el rival responde a tu canto de TRUCO:");
-            procesarCantoTrucoHumano(1, true);
+            procesarCantoTrucoHumano(1);
         } else if (r == 5) {
             System.out.println("Cantaste: ¡NO QUIERO Y TRUCO!");
-            mesa.getEquipo2().sumarPuntos(1);
+            mesa.getEquipo2().sumarPuntos(gestorEnvido.getPuntosNoQuiero());
             if (hayGanador()) return;
             System.out.println("\nAhora el rival responde a tu canto de TRUCO:");
-            procesarCantoTrucoHumano(1, true);
+            procesarCantoTrucoHumano(1);
         }
     }
 
@@ -528,96 +538,103 @@ public class Partida {
         }
     }
 
-    private boolean procesarCantoTrucoHumano(int ronda, boolean envidoResuelto) {
-        int proximoNivel = (nivelTruco == 1) ? 2 : nivelTruco + 1;
-        equipoQueCantoTruco = mesa.getEquipo1();
+    private boolean procesarCantoTrucoHumano(int ronda) {
+        gestorTruco.proponerAumento(mesa.getEquipo1());
         JugadorBot r = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
         int t2 = mesa.getEquipo2().getMejorTantoEnvido();
         int t1 = mesa.getEquipo1().getMejorTantoEnvido();
 
-        if (ronda == 1 && !envidoResuelto && r.quiereAbrirEnvido(t2, false)) {
+        if (ronda == 1 && !gestorEnvido.isResuelto() && r.quiereAbrirEnvido(t2, false)) {
             System.out.println("Rival responde: ¡EL ENVIDO ESTÁ PRIMERO! Cantó: ¡ENVIDO!");
             resolverEnvidoIniciadoPorRival(t1, t2);
+            gestorEnvido.marcarResuelto();
             if (hayGanador()) return false;
-            System.out.println("\nQuedó pendiente tu canto de " + siguienteCanto(nivelTruco) + "...");
+            System.out.println("\nQuedó pendiente tu canto de " + gestorTruco.getProximoCanto() + "...");
         }
 
-        int resp = r.responderTruco(proximoNivel);
+        int proximoNivelNum = gestorTruco.getNivelActual().getPuntosQuerido() + 1;
+        int resp = r.responderTruco(proximoNivelNum);
+
         if (resp == 1) {
             System.out.println("Rival responde: ¡QUIERO!");
-            puntosNoQueridoTruco = (proximoNivel == 2) ? 1 : proximoNivel - 1;
-            nivelTruco = proximoNivel;
+            gestorTruco.aceptarAumento();
+            gestorTruco.setEquipoConElQuiero(mesa.getEquipo2());
             return true;
         } else if (resp == 2) {
             System.out.println("Rival responde: ¡NO QUIERO!");
-            mesa.getEquipo1().sumarPuntos(puntosNoQueridoTruco);
+            mesa.getEquipo1().sumarPuntos(gestorTruco.getPuntosRechazo());
             return false;
         } else {
-            int sube = proximoNivel + 1;
-            System.out.println("Rival responde: ¡QUIERO Y " + textoNivel(sube) + "!");
-            equipoQueCantoTruco = mesa.getEquipo2();
+            gestorTruco.aceptarAumento(); // Se consolida el nivel previo
+            System.out.println("Rival responde: ¡QUIERO Y " + gestorTruco.getProximoCanto() + "!");
+            gestorTruco.proponerAumento(mesa.getEquipo2());
             System.out.println("¿Aceptás?");
             System.out.println("  [1] Quiero");
             System.out.println("  [2] No Quiero");
             if (leerOpcion(1, 2) == 1) {
-                puntosNoQueridoTruco = proximoNivel;
-                nivelTruco = sube;
+                gestorTruco.aceptarAumento();
+                gestorTruco.setEquipoConElQuiero(mesa.getEquipo1());
                 return true;
             } else {
-                mesa.getEquipo2().sumarPuntos(proximoNivel);
+                mesa.getEquipo2().sumarPuntos(gestorTruco.getPuntosRechazo());
                 return false;
             }
         }
     }
 
-    private boolean procesarCantoTrucoBot(Equipo eqBot, int ronda, boolean envidoResuelto) {
-        int proximoNivel = (nivelTruco == 1) ? 2 : nivelTruco + 1;
-        equipoQueCantoTruco = eqBot;
+    private boolean procesarCantoTrucoBot(Equipo eqBot, int ronda) {
+        gestorTruco.proponerAumento(eqBot);
         int t1 = mesa.getEquipo1().getMejorTantoEnvido();
         int t2 = mesa.getEquipo2().getMejorTantoEnvido();
 
-        boolean opcionEnvidoPrimero = (ronda == 1 && !envidoResuelto);
+        boolean opcionEnvidoPrimero = (ronda == 1 && !gestorEnvido.isResuelto());
+        boolean puedeSubir = (gestorTruco.getNivelActual() != GestorTruco.Nivel.RETRUCO && 
+                              gestorTruco.getNivelActual() != GestorTruco.Nivel.VALE_CUATRO);
 
         System.out.println("¿Qué respondés?");
         System.out.println("  [1] Quiero");
         System.out.println("  [2] No Quiero");
-        if (proximoNivel < 4) System.out.println("  [3] " + textoNivel(proximoNivel + 1));
+        if (puedeSubir) System.out.println("  [3] " + gestorTruco.getProximoCanto());
         if (opcionEnvidoPrimero) System.out.println("  [4] ¡El Envido está primero!");
 
-        int maxOp = opcionEnvidoPrimero ? 4 : (proximoNivel < 4 ? 3 : 2);
+        int maxOp = opcionEnvidoPrimero ? 4 : (puedeSubir ? 3 : 2);
         int r = leerOpcion(1, maxOp);
 
         if (opcionEnvidoPrimero && r == 4) {
             System.out.println("Cantaste: ¡EL ENVIDO ESTÁ PRIMERO!");
             resolverEnvidoIniciadoPorHumano(1, t1, t2);
+            gestorEnvido.marcarResuelto();
             if (hayGanador()) return false;
 
-            System.out.println("\nAhora debés responder al " + siguienteCanto(nivelTruco) + " del rival:");
+            System.out.println("\nAhora debés responder al Truco del rival:");
             System.out.println("  [1] Quiero");
             System.out.println("  [2] No Quiero");
-            if (proximoNivel < 4) System.out.println("  [3] " + textoNivel(proximoNivel + 1));
-            r = leerOpcion(1, proximoNivel < 4 ? 3 : 2);
+            if (puedeSubir) System.out.println("  [3] " + gestorTruco.getProximoCanto());
+            r = leerOpcion(1, puedeSubir ? 3 : 2);
         }
 
         if (r == 1) {
-            puntosNoQueridoTruco = (proximoNivel == 2) ? 1 : proximoNivel - 1;
-            nivelTruco = proximoNivel;
+            gestorTruco.aceptarAumento();
+            gestorTruco.setEquipoConElQuiero(mesa.getEquipo1());
             return true;
         } else if (r == 2) {
-            eqBot.sumarPuntos(puntosNoQueridoTruco);
+            eqBot.sumarPuntos(gestorTruco.getPuntosRechazo());
             return false;
         } else {
-            int sube = proximoNivel + 1;
-            equipoQueCantoTruco = mesa.getEquipo1();
+            gestorTruco.aceptarAumento(); // Se consolida
+            System.out.println("Cantaste: ¡" + gestorTruco.getProximoCanto() + "!");
+            gestorTruco.proponerAumento(mesa.getEquipo1());
             JugadorBot rBot = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
-            if (rBot.responderTruco(sube) == 1) {
+            int proximoNivelNum = gestorTruco.getNivelActual().getPuntosQuerido() + 1;
+
+            if (rBot.responderTruco(proximoNivelNum) == 1) {
                 System.out.println("Rival responde: ¡QUIERO!");
-                puntosNoQueridoTruco = proximoNivel;
-                nivelTruco = sube;
+                gestorTruco.aceptarAumento();
+                gestorTruco.setEquipoConElQuiero(mesa.getEquipo2());
                 return true;
             } else {
                 System.out.println("Rival responde: ¡NO QUIERO!");
-                mesa.getEquipo1().sumarPuntos(proximoNivel);
+                mesa.getEquipo1().sumarPuntos(gestorTruco.getPuntosRechazo());
                 return false;
             }
         }
@@ -626,14 +643,6 @@ public class Partida {
     private int puntosAlResto() {
         int lider = Math.max(mesa.getEquipo1().getPuntos(), mesa.getEquipo2().getPuntos());
         return puntajeLimite - lider;
-    }
-
-    private String siguienteCanto(int n) {
-        return (n == 1) ? "TRUCO" : (n == 2 ? "RETRUCO" : "VALE CUATRO");
-    }
-
-    private String textoNivel(int n) {
-        return siguienteCanto(n - 1);
     }
 
     private void mostrarTanteador() {
