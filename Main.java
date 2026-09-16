@@ -7,48 +7,57 @@ public class Main {
         System.out.println("========================================");
         System.out.println("       TRUCO ARGENTINO DE CONSOLA       ");
         System.out.println("========================================");
-        System.out.println("Selecciona la modalidad de jugadores:");
+        System.out.println("Seleccioná modalidad:");
         System.out.println("  [1] Mano a mano (1 vs 1)");
         System.out.println("  [2] En parejas (2 vs 2)");
 
-        int modalidad = 1;
+        int mod = 1;
         while (true) {
-            System.out.print("Elige modalidad (1 o 2): ");
+            System.out.print("Elegí modalidad (1 o 2): ");
             if (scanner.hasNextInt()) {
-                modalidad = scanner.nextInt();
+                mod = scanner.nextInt();
                 scanner.nextLine();
-                if (modalidad == 1 || modalidad == 2) break;
+                if (mod == 1 || mod == 2) break;
             } else {
                 scanner.nextLine();
             }
-            System.out.println("Opcion invalida.");
+            System.out.println("Opción inválida.");
         }
 
-        System.out.println("\nSelecciona el puntaje limite:");
+        System.out.println("\nSeleccioná el puntaje límite:");
         System.out.println("  [1] 15 puntos");
         System.out.println("  [2] 30 puntos");
 
-        int puntos = 30;
+        int pts = 30;
         while (true) {
-            System.out.print("Elige puntaje (1 o 2): ");
+            System.out.print("Elegí puntaje (1 o 2): ");
             if (scanner.hasNextInt()) {
                 int op = scanner.nextInt();
                 scanner.nextLine();
-                if (op == 1) { puntos = 15; break; }
-                if (op == 2) { puntos = 30; break; }
+                if (op == 1) { pts = 15; break; }
+                if (op == 2) { pts = 30; break; }
             } else {
                 scanner.nextLine();
             }
-            System.out.println("Opcion invalida.");
+            System.out.println("Opción inválida.");
         }
 
-        if (modalidad == 1) {
-            Partida partida = new Partida(puntos, scanner);
-            partida.iniciar();
+        Equipo e1 = new Equipo("Tu Equipo");
+        Equipo e2 = new Equipo("Equipo Rival");
+
+        if (mod == 1) {
+            e1.agregarJugador(new JugadorHumano("Tú", scanner));
+            e2.agregarJugador(new JugadorBot("Bot Rival"));
         } else {
-            PartidaParejas partidaP = new PartidaParejas(puntos, scanner);
-            partidaP.iniciar();
+            e1.agregarJugador(new JugadorHumano("Tú", scanner));
+            e2.agregarJugador(new JugadorBot("Rival Este"));
+            e1.agregarJugador(new JugadorBot("Tu Compañero"));
+            e2.agregarJugador(new JugadorBot("Rival Oeste"));
         }
+
+        Mesa mesa = new Mesa(e1, e2);
+        Partida partida = new Partida(mesa, pts, scanner);
+        partida.iniciar();
 
         scanner.close();
     }
