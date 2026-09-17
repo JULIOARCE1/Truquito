@@ -1,46 +1,21 @@
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
+        VistaJuego vista = new ConsolaTruco(scanner);
 
-        System.out.println("========================================");
-        System.out.println("       TRUCO ARGENTINO DE CONSOLA       ");
-        System.out.println("========================================");
-        System.out.println("Seleccioná modalidad:");
-        System.out.println("  [1] Mano a mano (1 vs 1)");
-        System.out.println("  [2] En parejas (2 vs 2)");
+        vista.mostrarMensaje("========================================");
+        vista.mostrarMensaje("       TRUCO ARGENTINO DE CONSOLA       ");
+        vista.mostrarMensaje("========================================");
 
-        int mod = 1;
-        while (true) {
-            System.out.print("Elegí modalidad (1 o 2): ");
-            if (scanner.hasNextInt()) {
-                mod = scanner.nextInt();
-                scanner.nextLine();
-                if (mod == 1 || mod == 2) break;
-            } else {
-                scanner.nextLine();
-            }
-            System.out.println("Opción inválida.");
-        }
+        int mod = vista.pedirOpcion("Seleccioná modalidad:", 
+                Arrays.asList("[1] Mano a mano (1 vs 1)", "[2] En parejas (2 vs 2)"), 1, 2);
 
-        System.out.println("\nSeleccioná el puntaje límite:");
-        System.out.println("  [1] 15 puntos");
-        System.out.println("  [2] 30 puntos");
-
-        int pts = 30;
-        while (true) {
-            System.out.print("Elegí puntaje (1 o 2): ");
-            if (scanner.hasNextInt()) {
-                int op = scanner.nextInt();
-                scanner.nextLine();
-                if (op == 1) { pts = 15; break; }
-                if (op == 2) { pts = 30; break; }
-            } else {
-                scanner.nextLine();
-            }
-            System.out.println("Opción inválida.");
-        }
+        int ptsOpcion = vista.pedirOpcion("\nSeleccioná el puntaje límite:", 
+                Arrays.asList("[1] 15 puntos", "[2] 30 puntos"), 1, 2);
+        int pts = (ptsOpcion == 1) ? 15 : 30;
 
         Equipo e1 = new Equipo("Tu Equipo");
         Equipo e2 = new Equipo("Equipo Rival");
@@ -56,7 +31,7 @@ public class Main {
         }
 
         Mesa mesa = new Mesa(e1, e2);
-        Partida partida = new Partida(mesa, pts, scanner);
+        Partida partida = new Partida(mesa, pts, vista);
         partida.iniciar();
 
         scanner.close();
