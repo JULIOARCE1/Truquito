@@ -32,7 +32,9 @@ public class RondaTruco {
             for (int k = 0; k < totalJugadores; k++) {
                 int actual = (turnoLanzador + k) % totalJugadores;
                 Jugador jActual = mesa.getJugador(actual);
+                Equipo eqActual = mesa.getEquipoDe(jActual);
 
+                // --- FASE DE ENVIDO EN RONDA 1 ---
                 if (ronda == 1 && !gestorEnvido.isResuelto()) {
                     if (totalJugadores == 2 && (k == 0 || k == 1)) {
                         if (arbitroEnvido.gestionarEnvido1v1(k)) return;
@@ -41,6 +43,7 @@ public class RondaTruco {
                     }
                 }
 
+                // --- INICIATIVA DE TRUCO ANTES DE TIRAR CARTA ---
                 if (jActual instanceof JugadorHumano) {
                     if (gestorTruco.puedeCantar(mesa.getEquipo1())) {
                         int c = vista.pedirOpcion("¿Deseás cantar " + gestorTruco.getProximoCanto() + " antes de tirar?",
@@ -51,15 +54,22 @@ public class RondaTruco {
                         }
                     }
                 } else if (jActual instanceof JugadorBot botActual) {
-                    Equipo eqBot = mesa.getEquipoDe(botActual);
                     int nivelNum = gestorTruco.getNivelActual().getPuntosQuerido();
-                    if (gestorTruco.puedeCantar(eqBot) && botActual.quiereCantarTruco(nivelNum)) {
-                        vista.mostrarMensaje("\n¡" + botActual.getNombre() + " canta " + gestorTruco.getProximoCanto() + "!");
-                        if (!procesarCantoTrucoBot(eqBot, ronda)) return;
+                    if (gestorTruco.puedeCantar(eqActual) && botActual.quiereCantarTruco(nivelNum)) {
+                        vista.mostrarMensaje("\n¡" + botActual.getNombre() + " (" + eqActual.getNombre() + ") canta " + gestorTruco.getProximoCanto() + "!");
+                        
+                        // Si el bot es de mi equipo, el canto va dirigido a los rivales
+                        if (eqActual == mesa.getEquipo1()) {
+                            if (!procesarCantoCompaneroBot(ronda)) return;
+                        } else {
+                            // Si el bot es rival, le canta a nuestro equipo (humano responde)
+                            if (!procesarCantoTrucoBot(eqActual, ronda)) return;
+                        }
                         gestorEnvido.marcarResuelto();
                     }
                 }
 
+                // --- TIRADA DE CARTA ---
                 Carta c;
                 if (jActual instanceof JugadorHumano) {
                     c = jActual.jugarCarta();
@@ -128,6 +138,7 @@ public class RondaTruco {
         ganador.sumarPuntos(pts);
     }
 
+    // Canto iniciado por el Humano hacia los Rivales
     private boolean procesarCantoTrucoHumano(int ronda) {
         gestorTruco.proponerAumento(mesa.getEquipo1());
         JugadorBot r = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
@@ -173,19 +184,57 @@ public class RondaTruco {
         }
     }
 
+    // Canto iniciado por el Compañero Bot hacia los Rivales
+    private boolean procesarCantoCompaneroBot(int ronda) {
+        gestorTruco.proponerAumento(mesa.getEquipo1());
+        JugadorBot r = (JugadorBot) mesa.getEquipo2().getIntegrantes().get(0);
+        int proximoNivelNum = gestorTruco.getNivelActual().getPuntosQuerido() + 1;
+        int resp = r.responderTruco(proximoNivelNum);
+
+        if (resp == 1) {
+            vista.mostrarMensaje("Rival responde: ¡QUIERO!");
+            gestorTruco.aceptarAumento();
+            gestorTruco.setEquipoConElQuiero(mesa.getEquipo2());
+            return true;
+        } else if (resp == 2) {
+            vista.mostrarMensaje("Rival responde: ¡NO QUIERO!");
+            int pts = gestorTruco.getPuntosRechazo();
+            vista.mostrarMensaje("\n>>> " + mesa.getEquipo1().getNombre() + " gana los puntos del Truco por rechazo (+" + pts + " pts).");
+            mesa.getEquipo1().sumarPuntos(pts);
+            return false;
+        } else {
+            gestorTruco.aceptarAumento();
+            vista.mostrarMensaje("Rival responde: ¡QUIERO Y " + gestorTruco.getProximoCanto() + "!");
+            gestorTruco.proponerAumento(mesa.getEquipo2());
+            int op = vista.pedirOpcion("El rival redobló. ¿Aceptás para tu equipo?", Arrays.asList("[1] Quiero", "[2] No Quiero"), 1, 2);
+            if (op == 1) {
+                gestorTruco.aceptarAumento();
+                gestorTruco.setEquipoConElQuiero(mesa.getEquipo1());
+                return true;
+            } else {
+                int pts = gestorTruco.getPuntosRechazo();
+                vista.mostrarMensaje("\n>>> " + mesa.getEquipo2().getNombre() + " gana los puntos por rechazo (+" + pts + " pts).");
+                mesa.getEquipo2().sumarPuntos(pts);
+                return false;
+            }
+        }
+    }
+
+    // Canto iniciado por un Rival hacia nosotros (Humano responde por el equipo)
     private boolean procesarCantoTrucoBot(Equipo eqBot, int ronda) {
         gestorTruco.proponerAumento(eqBot);
         int t1 = mesa.getEquipo1().getMejorTantoEnvido();
         int t2 = mesa.getEquipo2().getMejorTantoEnvido();
 
         boolean opcionEnvidoPrimero = (ronda == 1 && !gestorEnvido.isResuelto());
+        String proximoCanto = gestorTruco.getProximoCanto();
         boolean puedeSubir = (gestorTruco.getNivelActual() != GestorTruco.Nivel.RETRUCO && 
                               gestorTruco.getNivelActual() != GestorTruco.Nivel.VALE_CUATRO);
 
         List<String> opciones = new ArrayList<>();
         opciones.add("[1] Quiero");
         opciones.add("[2] No Quiero");
-        if (puedeSubir) opciones.add("[3] " + gestorTruco.getProximoCanto());
+        if (puedeSubir) opciones.add("[3] " + proximoCanto);
         if (opcionEnvidoPrimero) opciones.add("[4] ¡El Envido está primero!");
 
         int maxOp = opcionEnvidoPrimero ? 4 : (puedeSubir ? 3 : 2);
@@ -208,7 +257,7 @@ public class RondaTruco {
         } else if (r == 2) {
             int pts = gestorTruco.getPuntosRechazo();
             vista.mostrarMensaje("\n>>> " + eqBot.getNombre() + " gana los puntos del Truco por rechazo (+" + pts + " pts).");
-            eqBot.sumarPuntos(pts);
+            eqBot.sumarPuntos(pts); // Puntos para el bot rival, NO para nosotros
             return false;
         } else {
             gestorTruco.aceptarAumento();
