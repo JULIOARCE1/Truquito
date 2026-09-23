@@ -34,22 +34,75 @@ public class ConsolaTruco implements VistaJuego {
     @Override
     public void mostrarFinPartida(String ganador) {
         System.out.println("\n==================================================");
-        System.out.println("¡GANÓ " + ganador.toUpperCase() + "!");
+        System.out.println("  ¡¡¡ GANÓ " + ganador.toUpperCase() + " !!!");
         System.out.println("==================================================");
     }
 
     @Override
     public void mostrarTanteador(String eq1, String pts1, String eq2, String pts2, int limite) {
-        System.out.println("\n==================================================");
-        System.out.println("TANTEADOR (A " + limite + " PUNTOS):");
-        System.out.println("  " + eq1 + ": " + pts1);
-        System.out.println("  " + eq2 + ": " + pts2);
-        System.out.println("==================================================");
+        System.out.println("\n=================== TANTEADOR ===================");
+        dibujarLineaEquipo(eq1, pts1, limite);
+        dibujarLineaEquipo(eq2, pts2, limite);
+        System.out.println("=================================================");
+    }
+
+    private void dibujarLineaEquipo(String nombre, String ptsTexto, int limite) {
+        int total = extraerPuntosNumericos(ptsTexto);
+        System.out.println(nombre + " [" + total + " pts]:");
+
+        if (limite == 30) {
+            int malas = Math.min(total, 15);
+            int buenas = Math.max(0, total - 15);
+            System.out.println("  Malas  (" + String.format("%2d", malas) + "/15):  " + renderizarFosforos(malas));
+            System.out.println("  Buenas (" + String.format("%2d", buenas) + "/15): " + renderizarFosforos(buenas));
+        } else {
+            System.out.println("  Puntos (" + String.format("%2d", total) + "/" + limite + "): " + renderizarFosforos(total));
+        }
+    }
+
+    private String renderizarFosforos(int puntos) {
+        if (puntos <= 0) return "[ Sin puntos ]";
+        StringBuilder sb = new StringBuilder();
+        int completos = puntos / 5;
+        int resto = puntos % 5;
+
+        // Cada paquete cerrado contiene exactamente 5 fósforos
+        for (int i = 0; i < completos; i++) {
+            sb.append("[/////] ");
+        }
+
+        // El paquete en curso muestra los que van y completa hasta 5 con espacios
+        if (resto > 0) {
+            sb.append("[");
+            for (int i = 0; i < resto; i++) {
+                sb.append("/");
+            }
+            for (int i = resto; i < 5; i++) {
+                sb.append(" ");
+            }
+            sb.append("] ");
+        }
+        return sb.toString().trim();
+    }
+
+    private int extraerPuntosNumericos(String ptsTexto) {
+        try {
+            if (ptsTexto.contains("[Total: ")) {
+                int ini = ptsTexto.indexOf("[Total: ") + 8;
+                int fin = ptsTexto.indexOf("]", ini);
+                return Integer.parseInt(ptsTexto.substring(ini, fin).trim());
+            }
+            String limpio = ptsTexto.replaceAll("[^0-9]", " ").trim();
+            if (limpio.isEmpty()) return 0;
+            return Integer.parseInt(limpio.split("\\s+")[0]);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     @Override
     public void mostrarNuevaMano(String manoNombre, String detalleEquipo) {
-        System.out.println("\n--------------------------------------------------");
+        mostrarSeparador();
         if (detalleEquipo == null || detalleEquipo.isEmpty()) {
             System.out.println("NUEVA MANO - Es mano: " + manoNombre);
         } else {
