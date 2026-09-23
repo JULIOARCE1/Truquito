@@ -1,5 +1,3 @@
-import java.util.Arrays;
-
 public class Partida {
     private final Mesa mesa;
     private final Mazo mazo;
@@ -8,6 +6,7 @@ public class Partida {
     private final GestorTruco gestorTruco;
     private final GestorEnvido gestorEnvido;
     private final ArbitroEnvido arbitroEnvido;
+    private final ArbitroFlor arbitroFlor;
     private final RondaTruco rondaTruco;
 
     public Partida(Mesa mesa, int puntajeLimite, VistaJuego vista) {
@@ -18,6 +17,7 @@ public class Partida {
         this.gestorTruco = new GestorTruco();
         this.gestorEnvido = new GestorEnvido();
         this.arbitroEnvido = new ArbitroEnvido(mesa, gestorEnvido, gestorTruco, vista, puntajeLimite);
+        this.arbitroFlor = new ArbitroFlor(mesa, vista, puntajeLimite);
         this.rondaTruco = new RondaTruco(mesa, gestorTruco, gestorEnvido, arbitroEnvido, vista);
     }
 
@@ -26,19 +26,16 @@ public class Partida {
         sorteoInicialRey();
 
         while (!hayGanador()) {
-            int inicioPuntosEq1 = mesa.getEquipo1().getPuntos();
-            int inicioPuntosEq2 = mesa.getEquipo2().getPuntos();
+            int iniEq1 = mesa.getEquipo1().getPuntos();
+            int iniEq2 = mesa.getEquipo2().getPuntos();
 
             jugarMano();
             mesa.rotarMano();
 
-            int ganadosEq1 = mesa.getEquipo1().getPuntos() - inicioPuntosEq1;
-            int ganadosEq2 = mesa.getEquipo2().getPuntos() - inicioPuntosEq2;
-
             vista.mostrarMensaje("\n--------------------------------------------------");
             vista.mostrarMensaje("RESUMEN DE ESTA MANO:");
-            vista.mostrarMensaje("  " + mesa.getEquipo1().getNombre() + ": +" + ganadosEq1 + " pt(s)");
-            vista.mostrarMensaje("  " + mesa.getEquipo2().getNombre() + ": +" + ganadosEq2 + " pt(s)");
+            vista.mostrarMensaje("  " + mesa.getEquipo1().getNombre() + ": +" + (mesa.getEquipo1().getPuntos() - iniEq1) + " pt(s)");
+            vista.mostrarMensaje("  " + mesa.getEquipo2().getNombre() + ": +" + (mesa.getEquipo2().getPuntos() - iniEq2) + " pt(s)");
 
             vista.mostrarTanteador(mesa.getEquipo1().getNombre(), formatearPuntos(mesa.getEquipo1().getPuntos()),
                                    mesa.getEquipo2().getNombre(), formatearPuntos(mesa.getEquipo2().getPuntos()), puntajeLimite);
@@ -96,41 +93,11 @@ public class Partida {
             vista.mostrarMensaje("-------------------");
         }
 
-        boolean huboFlor = gestionarFaseFlor();
+        boolean huboFlor = arbitroFlor.gestionarFaseFlor();
         if (hayGanador()) return;
 
         if (huboFlor) gestorEnvido.marcarResuelto();
         rondaTruco.jugarRondas();
-    }
-
-    private boolean gestionarFaseFlor() {
-        boolean f1 = mesa.getEquipo1().tieneAlgunaFlor(), f2 = mesa.getEquipo2().tieneAlgunaFlor();
-        if (!f1 && !f2) return false;
-
-        vista.mostrarMensaje("\n--- FASE DE FLOR ---");
-        if (f1 && !f2) {
-            vista.mostrarAlerta(mesa.getEquipo1().getNombre() + " tiene Flor (+3 pts).");
-            mesa.getEquipo1().sumarPuntos(3);
-            return true;
-        }
-        if (!f1 && f2) {
-            vista.mostrarAlerta(mesa.getEquipo2().getNombre() + " tiene Flor (+3 pts).");
-            mesa.getEquipo2().sumarPuntos(3);
-            return true;
-        }
-
-        vista.mostrarAlerta("¡Ambos equipos tienen Flor!");
-        int t1 = mesa.getEquipo1().getMejorTantoFlor(), t2 = mesa.getEquipo2().getMejorTantoFlor();
-        boolean manoEsEq1 = (mesa.getEquipoDe(mesa.getJugador(mesa.getIndiceMano())) == mesa.getEquipo1());
-
-        if (t1 > t2 || (t1 == t2 && manoEsEq1)) {
-            vista.mostrarAlerta("Gana la flor " + mesa.getEquipo1().getNombre() + " (+6 pts).");
-            mesa.getEquipo1().sumarPuntos(6);
-        } else {
-            vista.mostrarAlerta("Gana la flor " + mesa.getEquipo2().getNombre() + " (+6 pts).");
-            mesa.getEquipo2().sumarPuntos(6);
-        }
-        return true;
     }
 
     private String formatearPuntos(int pts) {
