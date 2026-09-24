@@ -11,6 +11,12 @@ public class JugadorBot extends Jugador {
         super(nombre);
     }
 
+    // Implementación del método abstracto de Jugador
+    @Override
+    public Carta jugarCarta() {
+        return jugarCartaInteligente(null, true);
+    }
+
     // Selección de carta asistida por Monte Carlo
     public Carta jugarCartaInteligente(
             Carta cartaMesa,
@@ -42,7 +48,7 @@ public class JugadorBot extends Jugador {
                     c, resto, cartasVisiblesMesa, rondaActual, victoriasPrevias, botEsMano
             );
 
-            // Si hay carta en mesa del rival y esta carta la mata, le damos una bonificación táctica
+            // Si hay carta en mesa del rival y esta carta la mata, bonificación táctica
             if (cartaMesa != null && !cartaMesa.isTapada()) {
                 if (c.getJerarquiaTruco() > cartaMesa.getJerarquiaTruco()) {
                     prob += 0.05;
@@ -63,7 +69,7 @@ public class JugadorBot extends Jugador {
         return mano.remove(0);
     }
 
-    // Sobrecarga retrocompatible
+    // Sobrecargas retrocompatibles
     public Carta jugarCartaInteligente(Carta cartaMesa, boolean esPrimeraDeRonda, boolean ganaCompanero) {
         return jugarCartaInteligente(cartaMesa, esPrimeraDeRonda, ganaCompanero, new ArrayList<>(), 1, new int[3], false);
     }
