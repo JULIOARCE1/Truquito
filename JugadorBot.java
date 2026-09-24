@@ -1,146 +1,175 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
 public class JugadorBot extends Jugador {
-    private final Random azar;
+    private final Random random = new Random();
 
     public JugadorBot(String nombre) {
         super(nombre);
-        this.azar = new Random();
     }
 
-    @Override
-    public Carta jugarCarta() {
-        return jugarCartaInteligente(null, true);
-    }
-
-    public Carta jugarCartaInteligente(Carta cartaMesa, boolean esMano) {
-        mano.sort(Comparator.comparingInt(Carta::getJerarquiaTruco));
+    // Selección de carta asistida por Monte Carlo
+    public Carta jugarCartaInteligente(
+            Carta cartaMesa,
+            boolean esPrimeraDeRonda,
+            boolean ganaCompanero,
+            List<Carta> cartasVisiblesMesa,
+            int rondaActual,
+            int[] victoriasPrevias,
+            boolean botEsMano
+    ) {
+        List<Carta> mano = getMano();
         if (mano.isEmpty()) return null;
+        if (mano.size() == 1) return mano.remove(0);
 
-        // 1. Si el bot abre la ronda (va de mano en la baza)
-        if (cartaMesa == null || esMano) {
-            if (mano.size() == 3) {
-                // Abre con carta media el 35% de las veces, si no con la baja
-                if (azar.nextInt(100) < 35) {
-                    return mano.remove(1);
-                }
-            }
+        // Si mi compañero ya tiene la baza ganada en 2v2, tiro la carta más baja
+        if (ganaCompanero) {
+            mano.sort(Comparator.comparingInt(Carta::getJerarquiaTruco));
             return mano.remove(0);
         }
 
-        // 2. El rival ya tiró una carta: evaluar si conviene matar
-        int jerarquiaRival = cartaMesa.isTapada() ? 0 : cartaMesa.getJerarquiaTruco();
-        
-        List<Carta> matadoras = new ArrayList<>();
+        Carta mejorCarta = null;
+        double maxProb = -1.0;
+
         for (Carta c : mano) {
-            if (c.getJerarquiaTruco() > jerarquiaRival) {
-                matadoras.add(c);
+            List<Carta> resto = new ArrayList<>(mano);
+            resto.remove(c);
+
+            double prob = SimuladorMonteCarlo.estimarProbabilidadVictoria(
+                    c, resto, cartasVisiblesMesa, rondaActual, victoriasPrevias, botEsMano
+            );
+
+            // Si hay carta en mesa del rival y esta carta la mata, le damos una bonificación táctica
+            if (cartaMesa != null && !cartaMesa.isTapada()) {
+                if (c.getJerarquiaTruco() > cartaMesa.getJerarquiaTruco()) {
+                    prob += 0.05;
+                }
+            }
+
+            if (prob > maxProb) {
+                maxProb = prob;
+                mejorCarta = c;
             }
         }
 
-        // Si no puede matar la carta de la mesa, descarta la más baja
-        if (matadoras.isEmpty()) {
-            return mano.remove(0);
+        if (mejorCarta != null) {
+            mano.remove(mejorCarta);
+            return mejorCarta;
         }
 
-        // Ordenamos las que pueden ganar de menor a mayor
-        matadoras.sort(Comparator.comparingInt(Carta::getJerarquiaTruco));
-        Carta candidata = matadoras.get(0);
-
-        // EVALUACIÓN TÁCTICA EN PRIMERA RONDA (mano.size() == 3)
-        if (mano.size() == 3) {
-            // Si el rival tiró una carta muy baja (ej: 4 o 5, jerarquía <= 2)
-            if (jerarquiaRival <= 2) {
-                // Si para matar tiene que gastar una carta brava (jerarquía >= 11: 7 de oro, anchos, etc.)
-                // y no tiene una intermedia para cubrir, prefiere no quemarla y ceder primera
-                if (candidata.getJerarquiaTruco() >= 11) {
-                    return mano.remove(0); // Descarta la baja y guarda la potencia
-                }
-
-                // Especulación ocasional: 25% de chances de entregar primera a propósito
-                if (azar.nextInt(100) < 25) {
-                    return mano.remove(0);
-                }
-            }
-        }
-
-        // Mata con la menor posible que supere al rival
-        mano.remove(candidata);
-        return candidata;
+        return mano.remove(0);
     }
 
-    public int calcularFuerzaMano() {
-        int suma = 0;
-        for (Carta c : mano) {
-            suma += c.getJerarquiaTruco();
+    // Sobrecarga retrocompatible
+    public Carta jugarCartaInteligente(Carta cartaMesa, boolean esPrimeraDeRonda, boolean ganaCompanero) {
+        return jugarCartaInteligente(cartaMesa, esPrimeraDeRonda, ganaCompanero, new ArrayList<>(), 1, new int[3], false);
+    }
+
+    public Carta jugarCartaInteligente(Carta cartaMesa, boolean esPrimeraDeRonda) {
+        return jugarCartaInteligente(cartaMesa, esPrimeraDeRonda, false);
+    }
+
+    // Decisión de apertura de Envido
+    public boolean quiereAbrirEnvido(int tanto, boolean esMano) {
+        if (esMano) {
+            if (tanto >= 27) return true;
+            // Farol criollo: 10% de chances con tanto bajo
+            return (tanto < 24 && random.nextInt(100) < 10);
+        } else {
+            return tanto >= 29;
         }
-        return suma;
+    }
+
+    // Respuesta a Envido
+    public int responderEnvido(int tanto, int tipoEnvido, boolean soyMano) {
+        int bonusMano = soyMano ? 1 : 0;
+        int umbral = (tipoEnvido == 1) ? 26 : 29;
+
+        if ((tanto + bonusMano) >= 31) {
+            if (tipoEnvido == 1 && random.nextInt(100) < 65) return 3; // Real Envido
+            return 1; // Quiero
+        }
+
+        if ((tanto + bonusMano) >= umbral) return 1;
+        if (tanto >= 24 && random.nextInt(100) < 8) return 1; // Farol de aceptación
+
+        return 2; // No quiero
+    }
+
+    // Decisión de cantar Truco basada en Monte Carlo
+    public boolean quiereCantarTruco(
+            int nivelActual,
+            List<Carta> cartasVisibles,
+            int rondaActual,
+            int[] vics,
+            boolean botEsMano
+    ) {
+        double prob = SimuladorMonteCarlo.estimarProbabilidadGlobal(
+                getMano(), cartasVisibles, rondaActual, vics, botEsMano
+        );
+
+        if (nivelActual == 1) {
+            if (prob >= 0.58) return true;
+            // Farol con pocas probabilidades: 10% de chances
+            return (prob <= 0.25 && random.nextInt(100) < 10);
+        }
+        if (nivelActual == 2) return prob >= 0.68;
+        if (nivelActual == 3) return prob >= 0.82;
+
+        return false;
     }
 
     public boolean quiereCantarTruco(int nivelActual) {
-        int fuerza = calcularFuerzaMano();
-        if (nivelActual == 1 && fuerza >= 22) return true;
-        if (nivelActual == 2 && fuerza >= 16 && mano.size() <= 2) return true;
-        if (nivelActual == 3 && fuerza >= 12 && mano.size() == 1) return true;
-
-        return azar.nextInt(100) < 16 && fuerza < 16 && nivelActual == 1;
+        return quiereCantarTruco(nivelActual, new ArrayList<>(), 1, new int[3], false);
     }
 
-    public int responderTruco(int nivelActual) {
-        int fuerza = calcularFuerzaMano();
-        int prob = azar.nextInt(100);
+    // Respuesta a Truco basada en Valor Esperado (EV)
+    public int responderTruco(
+            int nivelPropuesto,
+            int puntosQueridos,
+            int puntosNoQueridos,
+            List<Carta> cartasVisibles,
+            int rondaActual,
+            int[] vics,
+            boolean botEsMano
+    ) {
+        double pWin = SimuladorMonteCarlo.estimarProbabilidadGlobal(
+                getMano(), cartasVisibles, rondaActual, vics, botEsMano
+        );
 
-        if (nivelActual == 2) {
-            if (fuerza >= 24) return 3;
-            if (prob < 12) return 3;
-            if (fuerza >= 16 || prob < 25) return 1;
-            return 2;
-        } else if (nivelActual == 3) {
-            if (fuerza >= 20) return 3;
-            if (prob < 8) return 3;
-            if (fuerza >= 14) return 1;
-            return 2;
-        } else if (nivelActual == 4) {
-            return (fuerza >= 12) ? 1 : 2;
+        // EV = (P_win * puntosGanados) - ((1 - P_win) * puntosPerdidos)
+        double evQuiero = (pWin * puntosQueridos) - ((1.0 - pWin) * puntosQueridos);
+        double evNoQuiero = -puntosNoQueridos;
+
+        // Si tiene ventaja aplastante, intenta redoblar (Retruco / Vale Cuatro)
+        if (pWin >= 0.78 && nivelPropuesto < 4 && random.nextInt(100) < 55) {
+            return 3;
         }
-        return 1;
-    }
 
-    public boolean quiereAbrirEnvido(int tanto, boolean esMano) {
-        if (tanto >= 26) return true;
-        if (esMano && tanto >= 24 && azar.nextInt(100) < 35) return true;
-        return tanto <= 23 && azar.nextInt(100) < 18;
-    }
-
-    public int responderEnvido(int tanto, int tipoApuesta, boolean esMano) {
-        int chanceDesconfiar = azar.nextInt(100);
-
-        if (tipoApuesta == 1) {
-            if (tanto >= 31) return 3;
-            if (tanto >= 27) return 1;
-            if (tanto >= 24 && (esMano || chanceDesconfiar < 45)) return 1;
-            if (chanceDesconfiar < 12) return 3;
-            return 2;
-        } else if (tipoApuesta == 2) {
-            if (tanto >= 32) return 3;
-            if (tanto >= 29) return 1;
-            if (tanto >= 26 && chanceDesconfiar < 30) return 1;
-            return 2;
-        } else {
-            if (tanto >= 31) return 1;
-            if (tanto >= 28 && chanceDesconfiar < 20) return 1;
-            return 2;
+        if (evQuiero >= evNoQuiero) {
+            return 1; // Quiero
         }
+
+        // Farol de supervivencia: 8%
+        if (random.nextInt(100) < 8) return 1;
+
+        return 2; // No quiero
     }
 
-    public int cantarFrenteAFlor(int tantoFlor) {
-        return (tantoFlor >= 34) ? 2 : 1;
+    public int responderTruco(int nivelPropuesto) {
+        int queridos = nivelPropuesto;
+        int noQueridos = (nivelPropuesto == 2) ? 1 : nivelPropuesto - 1;
+        return responderTruco(nivelPropuesto, queridos, noQueridos, new ArrayList<>(), 1, new int[3], false);
     }
 
-    public int responderContraflorAlResto(int tantoFlor) {
-        return (tantoFlor >= 33) ? 1 : 2;
+    public int cantarFrenteAFlor(int tanto) {
+        return (tanto >= 34) ? 2 : 1;
+    }
+
+    public int responderContraflorAlResto(int tanto) {
+        return (tanto >= 33) ? 1 : 2;
     }
 }
