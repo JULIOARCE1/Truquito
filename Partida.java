@@ -1,3 +1,6 @@
+import java.util.Arrays;
+import java.util.List;
+
 public class Partida {
     private final Mesa mesa;
     private final Mazo mazo;
@@ -32,10 +35,13 @@ public class Partida {
             jugarMano();
             mesa.rotarMano();
 
+            int delta1 = mesa.getEquipo1().getPuntos() - iniEq1;
+            int delta2 = mesa.getEquipo2().getPuntos() - iniEq2;
+
             vista.mostrarMensaje("\n--------------------------------------------------");
             vista.mostrarMensaje("RESUMEN DE ESTA MANO:");
-            vista.mostrarMensaje("  " + mesa.getEquipo1().getNombre() + ": +" + (mesa.getEquipo1().getPuntos() - iniEq1) + " pt(s)");
-            vista.mostrarMensaje("  " + mesa.getEquipo2().getNombre() + ": +" + (mesa.getEquipo2().getPuntos() - iniEq2) + " pt(s)");
+            vista.mostrarMensaje("  " + mesa.getEquipo1().getNombre() + ": +" + delta1 + " pt(s)");
+            vista.mostrarMensaje("  " + mesa.getEquipo2().getNombre() + ": +" + delta2 + " pt(s)");
 
             vista.mostrarTanteador(mesa.getEquipo1().getNombre(), formatearPuntos(mesa.getEquipo1().getPuntos()),
                                    mesa.getEquipo2().getNombre(), formatearPuntos(mesa.getEquipo2().getPuntos()), puntajeLimite);
@@ -46,7 +52,8 @@ public class Partida {
             }
         }
 
-        vista.mostrarFinPartida(mesa.getEquipo1().getPuntos() >= puntajeLimite ? mesa.getEquipo1().getNombre() : mesa.getEquipo2().getNombre());
+        String ganador = (mesa.getEquipo1().getPuntos() >= puntajeLimite) ? mesa.getEquipo1().getNombre() : mesa.getEquipo2().getNombre();
+        vista.mostrarFinPartida(ganador);
     }
 
     private void sorteoInicialRey() {
@@ -86,9 +93,10 @@ public class Partida {
 
         Jugador humano = mesa.getJugador(0);
         vista.mostrarCartasPropias(humano.getMano(), CalculadorEnvido.calcular(humano.getMano()));
+
+        // En 2 vs 2 se ocultan las cartas del compañero y se juega la fase de señas
         if (mesa.getTotalJugadores() == 4) {
-            Jugador compa = mesa.getJugador(2);
-            vista.mostrarCartasCompanero(compa.getNombre(), compa.getMano(), CalculadorEnvido.calcular(compa.getMano()));
+            gestionarFaseSenas();
         } else {
             vista.mostrarMensaje("-------------------");
         }
@@ -98,6 +106,47 @@ public class Partida {
 
         if (huboFlor) gestorEnvido.marcarResuelto();
         rondaTruco.jugarRondas();
+    }
+
+    private void gestionarFaseSenas() {
+        JugadorBot compaBot = (JugadorBot) mesa.getJugador(2);
+        SenaTruco senaCompa = compaBot.emitirSena();
+
+        vista.mostrarMensaje("\n--- COMUNICACIÓN POR SEÑAS (2 vs 2) ---");
+        vista.mostrarAlerta("Tu compañero te hace la seña: " + senaCompa.getAccion() + 
+                           " (Significa: " + senaCompa.getSignificado() + ")");
+
+        List<String> opciones = Arrays.asList(
+                "[1] Guiñar el ojo (1 de Espada)",
+                "[2] Mover la comisura de la boca (1 de Basto)",
+                "[3] Levantar las cejas (7 de Espada)",
+                "[4] Fruncir la nariz (7 de Oro)",
+                "[5] Trompita / Beso (Un 3)",
+                "[6] Morder labio / Boca abierta (Un 2)",
+                "[7] Cerrar los ojos (Ciego / Sin cartas)",
+                "[0] No hacer señas"
+        );
+
+        int elegida = vista.pedirOpcion("¿Qué seña querés pasarle a tu compañero?", opciones, 0, 7);
+        SenaTruco miSena;
+        switch (elegida) {
+            case 1 -> miSena = SenaTruco.ANCHO_ESPADA;
+            case 2 -> miSena = SenaTruco.ANCHO_BASTO;
+            case 3 -> miSena = SenaTruco.SIETE_ESPADA;
+            case 4 -> miSena = SenaTruco.SIETE_ORO;
+            case 5 -> miSena = SenaTruco.TRES;
+            case 6 -> miSena = SenaTruco.DOS;
+            case 7 -> miSena = SenaTruco.CIEGO;
+            default -> miSena = SenaTruco.NINGUNA;
+        }
+
+        compaBot.recibirSenaCompanero(miSena);
+        if (miSena != SenaTruco.NINGUNA) {
+            vista.mostrarMensaje("Le pasaste a tu compañero la seña: " + miSena.getAccion());
+        } else {
+            vista.mostrarMensaje("Decidiste no pasar señas.");
+        }
+        vista.mostrarMensaje("----------------------------------------");
     }
 
     private String formatearPuntos(int pts) {

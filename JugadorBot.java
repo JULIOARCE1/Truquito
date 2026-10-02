@@ -6,18 +6,25 @@ import java.util.Random;
 
 public class JugadorBot extends Jugador {
     private final Random random = new Random();
+    private SenaTruco senaCompanero = SenaTruco.NINGUNA;
 
     public JugadorBot(String nombre) {
         super(nombre);
     }
 
-    // Implementación del método abstracto de Jugador
+    public void recibirSenaCompanero(SenaTruco sena) {
+        this.senaCompanero = (sena != null) ? sena : SenaTruco.NINGUNA;
+    }
+
+    public SenaTruco emitirSena() {
+        return SenaTruco.determinarMejorSena(getMano());
+    }
+
     @Override
     public Carta jugarCarta() {
         return jugarCartaInteligente(null, true);
     }
 
-    // Selección de carta asistida por Monte Carlo
     public Carta jugarCartaInteligente(
             Carta cartaMesa,
             boolean esPrimeraDeRonda,
@@ -31,10 +38,17 @@ public class JugadorBot extends Jugador {
         if (mano.isEmpty()) return null;
         if (mano.size() == 1) return mano.remove(0);
 
-        // Si mi compañero ya tiene la baza ganada en 2v2, tiro la carta más baja
         if (ganaCompanero) {
             mano.sort(Comparator.comparingInt(Carta::getJerarquiaTruco));
             return mano.remove(0);
+        }
+
+        // Si mi compañero me cantó una carta brava (jerarquía >= 10: 3 o mayor) y yo salgo en primera, aflojo
+        if (rondaActual == 1 && senaCompanero != SenaTruco.NINGUNA && senaCompanero != SenaTruco.CIEGO) {
+            if (senaCompanero.getJerarquiaMinima() >= 10 && esPrimeraDeRonda) {
+                mano.sort(Comparator.comparingInt(Carta::getJerarquiaTruco));
+                return mano.remove(0);
+            }
         }
 
         Carta mejorCarta = null;
@@ -45,10 +59,9 @@ public class JugadorBot extends Jugador {
             resto.remove(c);
 
             double prob = SimuladorMonteCarlo.estimarProbabilidadVictoria(
-                    c, resto, cartasVisiblesMesa, rondaActual, victoriasPrevias, botEsMano
+                    c, resto, cartasVisiblesMesa, rondaActual, victoriasPrevias, botEsMano, 0, 200
             );
 
-            // Si hay carta en mesa del rival y esta carta la mata, bonificación táctica
             if (cartaMesa != null && !cartaMesa.isTapada()) {
                 if (c.getJerarquiaTruco() > cartaMesa.getJerarquiaTruco()) {
                     prob += 0.05;
@@ -69,7 +82,6 @@ public class JugadorBot extends Jugador {
         return mano.remove(0);
     }
 
-    // Sobrecargas retrocompatibles
     public Carta jugarCartaInteligente(Carta cartaMesa, boolean esPrimeraDeRonda, boolean ganaCompanero) {
         return jugarCartaInteligente(cartaMesa, esPrimeraDeRonda, ganaCompanero, new ArrayList<>(), 1, new int[3], false);
     }
@@ -78,34 +90,30 @@ public class JugadorBot extends Jugador {
         return jugarCartaInteligente(cartaMesa, esPrimeraDeRonda, false);
     }
 
-    // Decisión de apertura de Envido
     public boolean quiereAbrirEnvido(int tanto, boolean esMano) {
         if (esMano) {
             if (tanto >= 27) return true;
-            // Farol criollo: 10% de chances con tanto bajo
             return (tanto < 24 && random.nextInt(100) < 10);
         } else {
             return tanto >= 29;
         }
     }
 
-    // Respuesta a Envido
     public int responderEnvido(int tanto, int tipoEnvido, boolean soyMano) {
         int bonusMano = soyMano ? 1 : 0;
         int umbral = (tipoEnvido == 1) ? 26 : 29;
 
         if ((tanto + bonusMano) >= 31) {
-            if (tipoEnvido == 1 && random.nextInt(100) < 65) return 3; // Real Envido
-            return 1; // Quiero
+            if (tipoEnvido == 1 && random.nextInt(100) < 65) return 3;
+            return 1;
         }
 
         if ((tanto + bonusMano) >= umbral) return 1;
-        if (tanto >= 24 && random.nextInt(100) < 8) return 1; // Farol de aceptación
+        if (tanto >= 24 && random.nextInt(100) < 8) return 1;
 
-        return 2; // No quiero
+        return 2;
     }
 
-    // Decisión de cantar Truco basada en Monte Carlo
     public boolean quiereCantarTruco(
             int nivelActual,
             List<Carta> cartasVisibles,
@@ -114,12 +122,11 @@ public class JugadorBot extends Jugador {
             boolean botEsMano
     ) {
         double prob = SimuladorMonteCarlo.estimarProbabilidadGlobal(
-                getMano(), cartasVisibles, rondaActual, vics, botEsMano
+                getMano(), cartasVisibles, rondaActual, vics, botEsMano, 0, 200
         );
 
         if (nivelActual == 1) {
             if (prob >= 0.58) return true;
-            // Farol con pocas probabilidades: 10% de chances
             return (prob <= 0.25 && random.nextInt(100) < 10);
         }
         if (nivelActual == 2) return prob >= 0.68;
@@ -132,7 +139,6 @@ public class JugadorBot extends Jugador {
         return quiereCantarTruco(nivelActual, new ArrayList<>(), 1, new int[3], false);
     }
 
-    // Respuesta a Truco basada en Valor Esperado (EV)
     public int responderTruco(
             int nivelPropuesto,
             int puntosQueridos,
@@ -143,26 +149,23 @@ public class JugadorBot extends Jugador {
             boolean botEsMano
     ) {
         double pWin = SimuladorMonteCarlo.estimarProbabilidadGlobal(
-                getMano(), cartasVisibles, rondaActual, vics, botEsMano
+                getMano(), cartasVisibles, rondaActual, vics, botEsMano, 0, 200
         );
 
-        // EV = (P_win * puntosGanados) - ((1 - P_win) * puntosPerdidos)
         double evQuiero = (pWin * puntosQueridos) - ((1.0 - pWin) * puntosQueridos);
         double evNoQuiero = -puntosNoQueridos;
 
-        // Si tiene ventaja aplastante, intenta redoblar (Retruco / Vale Cuatro)
         if (pWin >= 0.78 && nivelPropuesto < 4 && random.nextInt(100) < 55) {
             return 3;
         }
 
         if (evQuiero >= evNoQuiero) {
-            return 1; // Quiero
+            return 1;
         }
 
-        // Farol de supervivencia: 8%
         if (random.nextInt(100) < 8) return 1;
 
-        return 2; // No quiero
+        return 2;
     }
 
     public int responderTruco(int nivelPropuesto) {
